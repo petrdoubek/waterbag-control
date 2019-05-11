@@ -4,7 +4,7 @@ import mysql.connector
 import requests
 import time
 
-import jawsdb
+import water.jawsdb
 
 
 INTERVAL_S = 3*3600;

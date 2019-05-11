@@ -3,7 +3,7 @@ import mysql.connector
 import time
 import urllib
 
-import jawsdb
+import water.jawsdb
 
 
 def handle_get(path, wfile):

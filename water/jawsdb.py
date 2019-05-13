@@ -1,6 +1,7 @@
 import logging
 import mysql.connector
 from mysql.connector import errorcode
+import os
 import time
 
 
@@ -8,10 +9,10 @@ class JawsDB:
 
     def __init__(self):
         db_config = dict(
-            host="e7qyahb3d90mletd.chr7pe7iynqr.eu-west-1.rds.amazonaws.com",
-            user="r4ciyc670gz7dvrk",
-            passwd="mi2yo0or7qe982m5",
-            database="kqmfr11rudkj9abl"
+            host=os.environ['JAWSDB_HOST'], # "e7qyahb3d90mletd.chr7pe7iynqr.eu-west-1.rds.amazonaws.com",
+            user=os.environ['JAWSDB_USER'], # "r4ciyc670gz7dvrk",
+            passwd=os.environ['JAWSDB_PASSWD'], #"mi2yo0or7qe982m5",
+            database=os.environ['JAWSDB_DATABASE'] #"kqmfr11rudkj9abl"
         )
 
         try:
@@ -46,13 +47,20 @@ class JawsDB:
         cursor.close()
 
     def insert(self, table, attr_names_csv, attr_format_csv, args_ntuple):
+        """insert n-tuple or list of n-tuples"""
         if self.db is None:
             return False
-        cursor = self.db.cursor()
-        cursor.execute("INSERT INTO %s (%s) VALUES (%s)" % (table, attr_names_csv, attr_format_csv), args_ntuple)
-        self.db.commit()
-        cursor.close()
-        return True
+        try:
+            cursor = self.db.cursor()
+            list_ntuples = args_ntuple if isinstance(args_ntuple, list) else [args_ntuple]
+            for rec in list_ntuples:
+                cursor.execute("INSERT INTO %s (%s) VALUES (%s)" % (table, attr_names_csv, attr_format_csv), rec)
+            self.db.commit()
+            cursor.close()
+            return True
+        except mysql.connector.Error as err:
+            print("  " + err.msg)
+            return False
 
     def delete_all(self, table):
         cursor = self.db.cursor()

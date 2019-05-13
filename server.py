@@ -7,8 +7,10 @@ import sys
 import pprint
 import concurrent.futures
 from http.server import BaseHTTPRequestHandler, HTTPServer
+import urllib
 
 import water.waterbag
+import water.openweather
 
 logging.basicConfig(stream=sys.stdout,
                     level=logging.INFO,
@@ -32,11 +34,21 @@ def info_text(cfg):
 class RequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         global CFG
+
         logging.info('web server gets request: %s' % self.path)
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
-        water.waterbag.handle_get(self.path, self.wfile)
+
+        parsed_url = urllib.parse.urlparse(self.path)
+        parsed_params = urllib.parse.parse_qs(parsed_url.query)
+
+        if parsed_url.path.startswith('/height'):
+            water.waterbag.handle_get(parsed_url, parsed_params, self.wfile)
+        elif parsed_url.path.startswith('/forecast'):
+            water.openweather.handle_get(parsed_url, parsed_params, self.wfile)
+        else:
+            self.wfile.write(bytes("UNKNOWN REQUEST", 'utf-8'))
 
     def handle_as_future(self):
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
@@ -51,7 +63,7 @@ class Web(threading.Thread):
     def __init__(self, cfg):
         threading.Thread.__init__(self)
         self.ip = '127.0.0.1' if 'USER' in os.environ else '0.0.0.0'
-        self.port = int(os.environ['PORT']) if 'PORT' in os.environ else 5000
+        self.port = int(os.environ.get('PORT', 5000))
         self.do_run = True
         self.cfg = cfg
 

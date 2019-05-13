@@ -1,32 +1,25 @@
 import logging
 import mysql.connector
 import time
-import urllib
-
-import water.jawsdb
 
 
-def handle_get(path, wfile):
-    db = jawsdb.JawsDB()
+def handle_get(url, params, wfile):
+    db = JawsDB()
     rsp = ""
 
-    parsed_url = urllib.parse.urlparse(path)
-    parsed_params = urllib.parse.parse_qs(parsed_url.query)
-    logging.info('waterbag.handle_get path: %s; urlparse:%s; parse_qs: %s' % (path, parsed_url, parsed_params))
-    if parsed_url.path.endswith('height'):
-        if 'insert_mm' in parsed_params:
-            height_mm = int(parsed_params['insert_mm'][0])
-            logging.info('insert %dmm height into db' % height_mm)
-            insert_height(db, height_mm)
-            logging.info('done')
-            rsp += 'OK'
-        else:
-            rsp += "<pre>\n" + read_height(db) + "</pre>\n"
+    logging.info('waterbag.handle_get urlparse:%s; parse_qs: %s' % (url, params))
+    if 'insert_mm' in params:
+        height_mm = int(params['insert_mm'][0])
+        logging.info('insert %dmm height into db' % height_mm)
+        insert_height(db, height_mm)
+        logging.info('done')
+        rsp += 'OK'
+    else:
+        rsp += "<pre>\n" + read_height(db) + "</pre>\n"
 
     if rsp == "":
         rsp = "UNKNOWN REQUEST"
 
-    # db.close() done automatically
     wfile.write(bytes(rsp, 'utf-8'))
 
 
@@ -50,7 +43,7 @@ def read_height(db):
 def main():
     """if this module is run, connect to the database and print it out"""
     import sys
-    db = jawsdb.JawsDB()
+    db = JawsDB()
 
     if len(sys.argv) > 1:
         if sys.argv[1] == 'insert_height':
@@ -67,4 +60,7 @@ def main():
 
 
 if __name__ == "__main__":
+    from jawsdb import JawsDB
     main()
+else:
+    from .jawsdb import JawsDB

@@ -10,6 +10,7 @@ INTERVAL_S = 3*3600
 CITY = 'pardubice,cz'
 APPID = os.environ['OPENWEATHER_APPID']
 URL = "http://api.openweathermap.org/data/2.5/forecast?q=pardubice,cz&mode=json&appid=13940fe7b67b11cff3cd0c2f8c0b526d"
+# TODO remove keys from code
 
 
 def handle_get(url, params, wfile):

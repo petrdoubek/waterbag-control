@@ -3,6 +3,11 @@ import mysql.connector
 import time
 
 
+MAX_VOLUME_L = 3000;
+MAX_HEIGHT_MM = 600;
+ROOF_AREA_M2 = 110;
+SENSOR_ABOVE_FLOOR_MM = 640;  # distance measured by sensor when the storage is empty
+
 def handle_get(url, params, wfile):
     db = JawsDB()
     rsp = ""
@@ -24,7 +29,8 @@ def handle_get(url, params, wfile):
 
 
 def insert_height(db, height_mm):
-    db.insert('height', 'time, mm', '%s, %s', (time.time(), height_mm))
+    db.insert('height', 'time, mm', '%s, %s', (time.time(), height_mm - SENSOR_ABOVE_FLOOR_MM))
+    # TODO this logic should be in the sensor so that it can trigger sprinkler autonomously
 
 
 def read_height(db):
@@ -39,6 +45,19 @@ def read_height(db):
     except mysql.connector.Error as err:
         rsp = err.msg
     return rsp
+
+
+def volume_l(height_mm):
+    """linear approximation, in reality the bag cut at low height resembles a rectangle and at high volume an ellipse;
+       therefore the volume per mm is heigher at smaller height than at max height
+       assumption is circumference is constant, that could be used for better approximation"""
+    return height_mm * MAX_VOLUME_L / MAX_HEIGHT_MM;
+
+
+def rain_l(rain_mm):
+    """conversion from precipitation mm to liters of water harvested"""
+    return rain_mm * ROOF_AREA_M2;
+
 
 def main():
     """if this module is run, connect to the database and print it out"""

@@ -29,7 +29,7 @@ def handle_get(url, params, wfile):
 
 
 def insert_height(db, height_mm):
-    db.insert('height', 'time, mm', '%s, %s', (time.time(), height_mm - SENSOR_ABOVE_FLOOR_MM))
+    db.insert('height', 'time, mm', '%s, %s', (time.time(), SENSOR_ABOVE_FLOOR_MM - height_mm))
     # TODO this logic should be in the sensor so that it can trigger sprinkler autonomously
 
 

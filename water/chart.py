@@ -31,9 +31,9 @@ def get_volume(db, tm_from, tm_now, tm_to):
                  " WHERE time BETWEEN %d and %d ORDER BY time" % (tm_from, tm_now))
         cursor.execute(query)
         stored = []
-        for (timestamp, mm) in cursor:
-            stored.append((timestamp, volume_l(mm)))
-        stored_string = '[' + ','.join(["{t:%d,y:%d}" % (timestamp, l) for (timestamp, l) in stored]) + ']'
+        for (sec, mm) in cursor:
+            stored.append((sec, volume_l(mm)))
+        stored_string = '[' + ','.join(["{t:%d,y:%d}" % (1000*sec, l) for (sec, l) in stored]) + ']'
 
         query = ("SELECT forecast_from, rain_mm FROM forecast"
                  " WHERE valid_to >= %d"
@@ -43,35 +43,13 @@ def get_volume(db, tm_from, tm_now, tm_to):
         cursor.execute(query)
         forecast = [];
         cumsum_l = stored[-1][1]
-        for (timestamp, mm) in cursor:
+        for (sec, mm) in cursor:
             cumsum_l += rain_l(mm)
-            forecast.append((timestamp, cumsum_l))
-        forecast_string = '[' + ','.join(["{t:%d,y:%d}" % (timestamp, l) for (timestamp, l) in forecast]) + ']'
+            forecast.append((sec, cumsum_l))
+        forecast_string = '[' + ','.join(["{t:%d,y:%d}" % (1000*sec, l) for (sec, l) in forecast]) + ']'
 
         cursor.close()
         return (stored_string, forecast_string)
-    except mysql.connector.Error as err:
-        return err.msg
-        # TODO error handling!
-
-
-def get_rain_forecast(db, tm_from, tm_to):
-    try:
-        cursor = db.db.cursor()
-        query = ("SELECT forecast_from, rain_mm FROM forecast"
-                 " WHERE valid_to >= %d"
-                 "   AND (forecast_from BETWEEN %d and %d"
-                 "        OR forecast_to BETWEEN %d and %d)"
-                 " ORDER BY forecast_from" % (tm_from, tm_from, tm_to, tm_from, tm_to))
-        cursor.execute(query)
-        forecast = [];
-        cumsum_l = 0
-        for (timestamp, mm) in cursor:
-            cumsum_l += rain_l(mm)
-            forecast.append((timestamp, cumsum_l))
-        rsp = '[' + ','.join(["{t:%d,y:%d}" % (timestamp, l) for (timestamp, l) in forecast]) + ']'
-        cursor.close()
-        return rsp
     except mysql.connector.Error as err:
         return err.msg
         # TODO error handling!

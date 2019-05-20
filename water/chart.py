@@ -23,6 +23,12 @@ def handle_get(url, params, wfile):
     wfile.write(bytes(rsp, 'utf-8'))
 
 
+def li_parameters():
+    """return list of parameters as a string, each parameter starting with <li> tag"""
+    params = dict(roof_area_m2=ROOF_AREA_M2)
+    return ''.join([ "<li>%s: %s\n" % (par,val) for par,val in params.items() ])
+
+
 def get_volume(db, tm_from, tm_now, tm_to):
     try:
         cursor = db.db.cursor()
@@ -61,7 +67,9 @@ def html_chart(db):
     with open(CHART_TEMPLATE, 'r') as template_file:
         return template_file.read()\
             .replace('%STORED%', stored)\
-            .replace('%FORECASTED_RAIN%', forecasted_rain)
+            .replace('%FORECASTED_RAIN%', forecasted_rain)\
+            .replace('%MAX_L%', '%d' % round(1.2*MAX_VOLUME_L))\
+            .replace('%PARAMETERS%', li_parameters())
 
 
 def main():
@@ -72,8 +80,8 @@ def main():
 
 if __name__ == "__main__":
     from jawsdb import JawsDB
-    from waterbag import volume_l, rain_l
+    from waterbag import volume_l, rain_l, MAX_VOLUME_L, ROOF_AREA_M2
     main()
 else:
     from .jawsdb import JawsDB
-    from .waterbag import volume_l, rain_l
+    from .waterbag import volume_l, rain_l, MAX_VOLUME_L, ROOF_AREA_M2

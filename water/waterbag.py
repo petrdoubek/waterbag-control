@@ -5,8 +5,8 @@ import time
 
 MAX_VOLUME_L = 3000;
 MAX_HEIGHT_MM = 600;
-ROOF_AREA_M2 = 110;
-SENSOR_ABOVE_FLOOR_MM = 640;  # distance measured by sensor when the storage is empty
+ROOF_AREA_M2 = 55;
+#SENSOR_ABOVE_FLOOR_MM = 640;  # distance measured by sensor when the storage is empty
 
 def handle_get(url, params, wfile):
     db = JawsDB()
@@ -29,7 +29,7 @@ def handle_get(url, params, wfile):
 
 
 def insert_height(db, height_mm):
-    db.insert('height', 'time, mm', '%s, %s', (time.time(), SENSOR_ABOVE_FLOOR_MM - height_mm))
+    db.insert('height', 'time, mm', '%s, %s', (time.time(), height_mm)) #SENSOR_ABOVE_FLOOR_MM - height_mm))
     # TODO this logic should be in the sensor so that it can trigger sprinkler autonomously
 
 
@@ -66,7 +66,7 @@ def main():
 
     if len(sys.argv) > 1:
         if sys.argv[1] == 'insert_height':
-            insert_height(db, sys.argv[2] if len(sys.argv) >= 3 else 123)
+            insert_height(db, int(sys.argv[2]) if len(sys.argv) >= 3 else 123)
         if sys.argv[1] == 'create_height':
             db.create("CREATE TABLE height (time INT UNSIGNED NOT NULL, mm INT, PRIMARY KEY (time));")
         if sys.argv[1] == 'delete_height':

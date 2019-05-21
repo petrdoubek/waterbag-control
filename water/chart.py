@@ -68,7 +68,7 @@ def html_chart(db):
         return template_file.read()\
             .replace('%STORED%', stored)\
             .replace('%FORECASTED_RAIN%', forecasted_rain)\
-            .replace('%MAX_L%', '%d' % round(1.2*MAX_VOLUME_L))\
+            .replace('%MAX_L%', '%d' % round(1.5*MAX_VOLUME_L))\
             .replace('%PARAMETERS%', li_parameters())
 
 

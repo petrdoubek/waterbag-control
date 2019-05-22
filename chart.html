@@ -63,12 +63,12 @@
 						type: 'time',
 						time: {
 							displayFormats: {
-							  minute: 'D.M. H:mm',
-							  hour: 'D.M. H[h]',
-							  day: 'D.M.'
+							  minute: 'ddd D.M. H:mm',
+							  hour: 'ddd D.M. H[h]',
+							  day: 'ddd D.M.'
 							}
 						},
-						ticks: { autoSkip: true }
+						ticks: { autoSkip: true, maxRotation: 70 }
 					}],
 					yAxes: [{
 						scaleLabel: {

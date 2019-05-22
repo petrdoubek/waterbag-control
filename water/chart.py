@@ -14,6 +14,13 @@ def handle_get(url, params, wfile):
     rsp = ""
 
     logging.info('chart.handle_get urlparse:%s; parse_qs: %s' % (url, params))
+    global INTERVAL_PAST_S, INTERVAL_FUTURE_S
+    if 'days' in params:
+        INTERVAL_PAST_S = int(params['days'][0]) * DAY_S
+        INTERVAL_FUTURE_S = INTERVAL_PAST_S
+    if 'hours' in params:
+        INTERVAL_PAST_S = int(params['hours'][0]) * 3600
+        INTERVAL_FUTURE_S = INTERVAL_PAST_S
 
     rsp = html_chart(db)
 
@@ -41,17 +48,17 @@ def get_volume(db, tm_from, tm_now, tm_to):
             stored.append((sec, volume_l(mm)))
         stored_string = '[' + ','.join(["{t:%d,y:%d}" % (1000*sec, l) for (sec, l) in stored]) + ']'
 
-        query = ("SELECT forecast_from, rain_mm FROM forecast"
+        query = ("SELECT forecast_from, forecast_to, rain_mm FROM forecast"
                  " WHERE valid_to >= %d"
                  "   AND (forecast_from BETWEEN %d and %d"
                  "        OR forecast_to BETWEEN %d and %d)"
                  " ORDER BY forecast_from" % (tm_now, tm_now, tm_to, tm_now, tm_to))
         cursor.execute(query)
-        forecast = [];
+        forecast = [(stored[-1][0], stored[-1][1])]
         cumsum_l = stored[-1][1]
-        for (sec, mm) in cursor:
+        for (from_s, to_s, mm) in cursor:
             cumsum_l += rain_l(mm)
-            forecast.append((sec, cumsum_l))
+            forecast.append((int((from_s + to_s)/2), cumsum_l))
         forecast_string = '[' + ','.join(["{t:%d,y:%d}" % (1000*sec, l) for (sec, l) in forecast]) + ']'
 
         cursor.close()

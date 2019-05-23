@@ -6,7 +6,7 @@ import time
 MAX_VOLUME_L = 3000;
 MAX_HEIGHT_MM = 600;
 ROOF_AREA_M2 = 55;
-#SENSOR_ABOVE_FLOOR_MM = 640;  # distance measured by sensor when the storage is empty
+
 
 def handle_get(url, params, wfile):
     db = JawsDB()
@@ -29,18 +29,27 @@ def handle_get(url, params, wfile):
 
 
 def insert_height(db, height_mm):
-    db.insert('height', 'time, mm', '%s, %s', (time.time(), height_mm)) #SENSOR_ABOVE_FLOOR_MM - height_mm))
-    # TODO this logic should be in the sensor so that it can trigger sprinkler autonomously
+    db.insert('height', 'time, mm', '%s, %s', (time.time(), height_mm))
 
 
 def read_height(db):
+    """return list of heights in pre-tags"""
     rsp = ""
     try:
         cursor = db.db.cursor()
         query = ("SELECT time, mm FROM height ORDER BY time desc")
         cursor.execute(query)
+        last = -1
+        repeated = 0
         for (timestamp, mm) in cursor:
-            rsp += "  %s  %dmm\n" % (time.strftime("%x %X", time.localtime(timestamp)), mm)
+            if abs(mm-last) > 0:
+                if repeated > 1:
+                    rsp += "  (%dx)" % repeated
+                rsp += "\n%s  %dmm" % (time.strftime("%a %d.%m. %X", time.localtime(timestamp)), mm)
+                last = mm
+                repeated = 1
+            else:
+                repeated += 1
         cursor.close()
     except mysql.connector.Error as err:
         rsp = err.msg

@@ -15,10 +15,10 @@ def handle_get(url, params, wfile):
 
     logging.info('chart.handle_get urlparse:%s; parse_qs: %s' % (url, params))
     global INTERVAL_PAST_S, INTERVAL_FUTURE_S
-    if 'days' in params:
+    if 'days' in params and int(params['days'][0]) > 0:
         INTERVAL_PAST_S = int(params['days'][0]) * DAY_S
         INTERVAL_FUTURE_S = INTERVAL_PAST_S
-    if 'hours' in params:
+    if 'hours' in params and int(params['hours'][0]) > 0:
         INTERVAL_PAST_S = int(params['hours'][0]) * 3600
         INTERVAL_FUTURE_S = INTERVAL_PAST_S
 

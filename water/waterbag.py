@@ -19,8 +19,18 @@ def handle_get(url, params, wfile):
         insert_height(db, height_mm)
         logging.info('done')
         rsp += 'OK'
+    elif 'insert_log' in params:
+        msg = params['insert_log'][0]
+        logging.info('insert log into db: %s' % msg)
+        insert_log(db, msg)
+        logging.info('done')
+        rsp += 'OK'
+    elif url.path.endswith('log'):
+        rsp += "<pre>" + read_log(db) + "</pre>\n"
+    elif url.path.endswith('command'):
+        rsp += pop_command(db)
     else:
-        rsp += "<pre>\n" + read_height(db) + "</pre>\n"
+        rsp += "<pre>" + read_height(db) + "</pre>\n"
 
     if rsp == "":
         rsp = "UNKNOWN REQUEST"
@@ -30,6 +40,14 @@ def handle_get(url, params, wfile):
 
 def insert_height(db, height_mm):
     db.insert('height', 'time, mm', '%s, %s', (time.time(), height_mm))
+
+
+def insert_log(db, msg):
+    db.insert('log', 'time, msg', '%s, %s', (time.time(), msg))
+
+
+def insert_command(db, cmd):
+    db.insert('command', 'time, cmd, popped', '%s, %s, %s', (time.time(), cmd, 'N'))
 
 
 def read_height(db):
@@ -56,6 +74,44 @@ def read_height(db):
     return rsp
 
 
+def read_log(db):
+    """return list of heights in pre-tags"""
+    rsp = ""
+    try:
+        cursor = db.db.cursor()
+        query = ("SELECT time, msg FROM log ORDER BY time desc")
+        cursor.execute(query)
+        for (timestamp, msg) in cursor:
+            rsp += "\n%s  %s" % (time.strftime("%a %d.%m. %X", time.localtime(timestamp)), msg)
+        cursor.close()
+    except mysql.connector.Error as err:
+        rsp = err.msg
+    return rsp
+
+
+def pop_command(db):
+    rsp = ""
+    try:
+        cursor = db.db.cursor()
+        query = "SELECT time, cmd FROM command WHERE popped='N' ORDER BY time asc LIMIT 1"
+        cursor.execute(query)
+
+        for (timestamp, cmd) in cursor:
+            rsp += cmd
+            cursor.close()
+            cursor2 = db.db.cursor()
+            update = ("UPDATE command SET popped = 'Y' WHERE time = %d AND cmd = '%s' AND popped = 'N'"
+                     % (timestamp, cmd))
+            cursor2.execute(update)
+            cursor2.close()
+            db.db.commit()
+            break  # only one command will be sent, client will ask for next one when ready
+
+    except mysql.connector.Error as err:
+        rsp = err.msg
+    return rsp
+
+
 def volume_l(height_mm):
     """linear approximation, in reality the bag cut at low height resembles a rectangle and at high volume an ellipse;
        therefore the volume per mm is heigher at smaller height than at max height
@@ -76,8 +132,27 @@ def main():
     if len(sys.argv) > 1:
         if sys.argv[1] == 'insert_height':
             insert_height(db, int(sys.argv[2]) if len(sys.argv) >= 3 else 123)
+        if sys.argv[1] == 'read_log':
+            print(read_log(db))
+            return
+        if sys.argv[1] == 'insert_log':
+            insert_log(db, sys.argv[2] if len(sys.argv) >= 3 else "testing message")
+            return
+        if sys.argv[1] == 'pop_command':
+            print(pop_command(db))
+            return
+        if sys.argv[1] == 'insert_command':
+            insert_command(db, sys.argv[2] if len(sys.argv) >= 3 else "testing command")
+            return
         if sys.argv[1] == 'create_height':
             db.create("CREATE TABLE height (time INT UNSIGNED NOT NULL, mm INT, PRIMARY KEY (time));")
+            return
+        if sys.argv[1] == 'create_log':
+            db.create("CREATE TABLE log (time INT UNSIGNED NOT NULL, msg VARCHAR(1024));")
+            return
+        if sys.argv[1] == 'create_command':
+            db.create("CREATE TABLE command (time INT UNSIGNED NOT NULL, cmd VARCHAR(1024), popped ENUM('Y','N'));")
+            return
         if sys.argv[1] == 'delete_height':
             if len(sys.argv) == 3 and sys.argv[2] == 'really_do':
                 db.delete_all('height')

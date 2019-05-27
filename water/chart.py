@@ -63,6 +63,9 @@ def get_volume(db, tm_from, tm_now, tm_to):
         for (from_s, to_s, mm) in cursor:
             cumsum_l += rain_l(mm)
             forecast.append((int((from_s + to_s)/2), cumsum_l))
+        if len(forecast) >= 2 and forecast[1][0] < stored[-1][0]:
+            forecast[1] = (stored[-1][0], forecast[1][1])  # do not go back in time with first forecast
+            # TODO forecast only proportionate part of rain?
         forecast_string = '[' + ','.join(["{t:%d,y:%d}" % (1000*sec, l) for (sec, l) in forecast]) + ']'
 
         overflow_s = -1

@@ -37,6 +37,10 @@ def li_parameters():
 
 
 def get_volume(db, tm_from, tm_now, tm_to):
+    """returns:
+       - time series [{t,stored}] printed as string
+       - time series [{t,forecast}] printed as string
+       - current volume"""
     try:
         cursor = db.db.cursor()
 
@@ -61,8 +65,14 @@ def get_volume(db, tm_from, tm_now, tm_to):
             forecast.append((int((from_s + to_s)/2), cumsum_l))
         forecast_string = '[' + ','.join(["{t:%d,y:%d}" % (1000*sec, l) for (sec, l) in forecast]) + ']'
 
+        overflow_s = -1
+        query = "SELECT time, msg FROM log WHERE msg LIKE 'overflow_opened%' ORDER BY time DESC LIMIT 1"
+        cursor.execute(query)
+        for (log_ts, msg) in cursor:
+            overflow_s = tm_now - log_ts;
+
         cursor.close()
-        return (stored_string, forecast_string)
+        return (stored_string, forecast_string, stored[-1][1], overflow_s)
     except mysql.connector.Error as err:
         return err.msg
         # TODO error handling!
@@ -70,9 +80,10 @@ def get_volume(db, tm_from, tm_now, tm_to):
 
 def html_chart(db):
     tm_now = time.time()
-    (stored, forecasted_rain) = get_volume(db, tm_now - INTERVAL_PAST_S, tm_now, tm_now + INTERVAL_FUTURE_S)
+    (stored, forecasted_rain, now_l, overflow_s) = get_volume(db, tm_now - INTERVAL_PAST_S, tm_now, tm_now + INTERVAL_FUTURE_S)
     with open(CHART_TEMPLATE, 'r') as template_file:
         return template_file.read()\
+            .replace('%STATE%', '%dl %s' % (now_l, ('overflow open %ds' % overflow_s) if overflow_s>=0 else 'overflow closed'))\
             .replace('%STORED%', stored)\
             .replace('%FORECASTED_RAIN%', forecasted_rain)\
             .replace('%MAX_L%', '%d' % round(1.5*MAX_VOLUME_L))\

@@ -43,6 +43,7 @@ void config_from_string(String bytes) {
 void read_config(StaticJsonDocument<EEPROM_SIZE> &cfg) {
   char bytes[EEPROM_SIZE];
   EEPROM.get(0, bytes);
+  Serial.println("\nread_config bytes:\n" + String(bytes) + "\n\n");
   StaticJsonDocument<EEPROM_SIZE> check_cfg;
   if (deserializeJson(check_cfg, bytes) != DeserializationError::Ok) {
     Serial.println("JSON deserialization failed");
@@ -60,6 +61,7 @@ void store_config(StaticJsonDocument<EEPROM_SIZE> &cfg) {
   if (serializeJson(cfg, bytes) == 0) { // returns number of bytes
     Serial.println("JSON serialization failed");
   }
+  Serial.println("\nstore_config bytes:\n" + String(bytes) + "\n\n");
   EEPROM.put(0, bytes);
 }
 

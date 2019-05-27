@@ -32,42 +32,47 @@ using namespace axTLS;
 
 const char *ssid = "a-router", *password = "D79EFFEC66";
 const char *host = "pdou-voda.herokuapp.com";
-#define INSERT_PATH "/waterbag?insert_mm="
-#define LOG_PATH "/waterbag?insert_log="
-#define COMMAND_PATH "/waterbag/command"
+#define INSERT_PATH   "/waterbag?insert_mm="
+#define LOG_PATH      "/waterbag?insert_log="
+#define COMMAND_PATH  "/waterbag/command"
+#define AVG_WINDOW 30
 
 #define TRIGGER_PIN      D1  // ultrasound sensor
 #define ECHO_PIN         D2  // ultrasound sensor
 #define OVERFLOW_PIN     D5  // connected to relay that opens valve to release water somewhere
-#define IRRIGATION_PIN . D6  // currently not used
+#define IRRIGATION_PIN   D6  // currently not used
 #define LED              D7  // blink when measuring - nice to have
 
 NewPing sonar(TRIGGER_PIN, ECHO_PIN, (int) cfg["MAX_DETECT_CM"]);
-MedianFilter<int> medianFilter((int) cfg["AVG_WINDOW"]);
+MedianFilter<int> medianFilter(30); //(int) cfg["AVG_WINDOW"]);
 
 float last_sent_mm = 100000.0;
 int till_measure_s, till_send_s, till_force_send_s;
+bool overflow_opened = false;
 
 
 void setup() {
   Serial.begin(9600);
   pinMode(LED, OUTPUT);
+  pinMode(OVERFLOW_PIN, OUTPUT);
   digitalWrite(LED, LOW);
+  digitalWrite(OVERFLOW_PIN, HIGH);  // the relay is activated by "grounded" pin, i.e. LOW voltage, HIGH means deactivated
 
   init_config(cfg);
   till_measure_s = 1;
   till_send_s = cfg["CYCLE_SEND_S"];
   till_force_send_s = cfg["FORCE_SEND_S"];
-  
+
+  Serial.println();
   #ifdef USE_DISPLAY
     disp.setBrightness(8); // range 8-15
   #endif
   #ifdef USE_EEPROM
-    //EEPROM.begin(EEPROM_SIZE); // TODO is it necessary? not in v6 example
+    Serial.println("loading config ...");
     read_config(cfg);
     store_config(cfg);
-    print_config(cfg);
   #endif
+  print_config(cfg);
 }
 
 void print_disp_err(String msg, int code) {
@@ -106,15 +111,22 @@ void loop() {
   if (till_measure_s <= 0) {
     measure();
     till_measure_s = cfg["CYCLE_MEASURE_S"];
+    
     // open or close the overflow valve if needed
     int filtered_height_mm = medianFilter.GetFiltered();
-    if (!digitalRead(OVERFLOW_PIN) && filtered_height_mm >= cfg["TRIGGER_OVERFLOW_MM"]) {
+    Serial.println("opened? "+ String(overflow_opened));
+    
+    if (!overflow_opened && filtered_height_mm >= (int) cfg["TRIGGER_OVERFLOW_MM"]) {
+      digitalWrite(OVERFLOW_PIN, LOW);
+      overflow_opened = true;
+      insert_log("overflow_opened:" + String(filtered_height_mm) + "ge" + String((int) cfg["TRIGGER_OVERFLOW_MM"]));
+      
+    } else if (overflow_opened && filtered_height_mm < (int) cfg["TRIGGER_OVERFLOW_MM"]) {
       digitalWrite(OVERFLOW_PIN, HIGH);
-      insert_log("overflow_opened");
-    } else if (digitalRead(OVERFLOW_PIN) && filtered_height_mm < cfg ["TRIGGER_OVERFLOW_MM"]) {
-      digitalWrite(OVERFLOW_PIN, LOW); 
-      insert_log("overflow_closed");     
+      overflow_opened = false;
+      insert_log("overflow_closed:" + String(filtered_height_mm) + "lt" + String((int) cfg["TRIGGER_OVERFLOW_MM"]));  
     }
+    
   }
   if (till_send_s <= 0) {
     int filtered_mm = medianFilter.GetFiltered();
@@ -125,6 +137,7 @@ void loop() {
       } else {
         Serial.println("sending failed");
       }
+      load_command();  // check if server has any task (new config etc.)
     } else {
       Serial.println("sending skipped");
     }
@@ -143,7 +156,7 @@ void measure() {
   digitalWrite(LED, HIGH);
   int dist_mm = (343 * (int) sonar.ping_median((int) cfg["N_PINGS"], (int) cfg["MAX_DETECT_CM"])) / 2000;
   int height_mm = (int) cfg["DIST_SENSOR_BOTTOM_MM"] - dist_mm;
-  Serial.printf("measured height %dmm - %dmm = %dmm   ", (int) cfg["DIST_SENSOR_BOTTOM_MM"], dist_mm, height_mm);
+  Serial.printf("measurement: const %dmm - distance %dmm = height %dmm    ", (int) cfg["DIST_SENSOR_BOTTOM_MM"], dist_mm, height_mm);
   digitalWrite(LED, LOW);
   medianFilter.AddValue(height_mm);
   Serial.printf("median %4dmm\n", medianFilter.GetFiltered());

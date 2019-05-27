@@ -5,8 +5,8 @@ import time
 
 CHART_TEMPLATE = 'chart.html'
 DAY_S = 24*3600
-INTERVAL_PAST_S = 14*DAY_S
-INTERVAL_FUTURE_S = 5*DAY_S
+INTERVAL_PAST_S = 3*DAY_S
+INTERVAL_FUTURE_S = 3*DAY_S
 
 
 def handle_get(url, params, wfile):
@@ -66,10 +66,12 @@ def get_volume(db, tm_from, tm_now, tm_to):
         forecast_string = '[' + ','.join(["{t:%d,y:%d}" % (1000*sec, l) for (sec, l) in forecast]) + ']'
 
         overflow_s = -1
-        query = "SELECT time, msg FROM log WHERE msg LIKE 'overflow_opened%' ORDER BY time DESC LIMIT 1"
+        query = "SELECT time, msg FROM log WHERE msg LIKE 'overflow_%' ORDER BY time DESC LIMIT 1"
         cursor.execute(query)
         for (log_ts, msg) in cursor:
-            overflow_s = tm_now - log_ts;
+            if msg.startswith('overflow_opened'):
+                overflow_s = tm_now - log_ts;
+            break
 
         cursor.close()
         return (stored_string, forecast_string, stored[-1][1], overflow_s)

@@ -83,7 +83,7 @@ def html_chart(db):
     (stored, forecasted_rain, now_l, overflow_s) = get_volume(db, tm_now - INTERVAL_PAST_S, tm_now, tm_now + INTERVAL_FUTURE_S)
     with open(CHART_TEMPLATE, 'r') as template_file:
         return template_file.read()\
-            .replace('%STATE%', '%dl %s' % (now_l, ('overflow open %ds' % overflow_s) if overflow_s>=0 else 'overflow closed'))\
+            .replace('%STATE%', '%dl, %s' % (now_l, ('overflow open %ds' % overflow_s) if overflow_s>=0 else 'overflow closed'))\
             .replace('%STORED%', stored)\
             .replace('%FORECASTED_RAIN%', forecasted_rain)\
             .replace('%MAX_L%', '%d' % round(1.5*MAX_VOLUME_L))\

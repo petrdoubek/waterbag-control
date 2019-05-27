@@ -77,7 +77,10 @@ def read_forecast(db, start_timestamp):
                  % (time.time(), start_timestamp))
         cursor.execute(query)  # , time.time())
         for (valid_from, forecast_from, forecast_to, rain_mm) in cursor:
-            rsp += "  %s: %s - %s  %.2fmm\n" % (strtime(valid_from), strtime(forecast_from), strtime(forecast_to), rain_mm)
+            rsp += "%s:    %s - %s  %.2fmm\n" % (time.strftime("%d.%m. %H:%m", time.localtime(valid_from)),
+                                                time.strftime("%a %d.%m. %H:%m", time.localtime(forecast_from)),
+                                                time.strftime("%H:%m", time.localtime(forecast_to)),
+                                                rain_mm)
         cursor.close()
     except mysql.connector.Error as err:
         rsp = err.msg

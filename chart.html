@@ -31,13 +31,11 @@
 	</div>
 	<script>
     window.chartColors = {
-      red: 'rgb(255, 99, 132)',
+      red: 'rgb(255, 99, 132)', redFill: 'rgb(255, 99, 132, 0.3)',
       orange: 'rgb(255, 159, 64)',
       yellow: 'rgb(255, 205, 86)',
-      green: 'rgb(75, 255, 75)',
-      greenFill: 'rgba(75, 255, 75, 0.3)',
-      blue: 'rgb(54, 162, 235)',
-      blueFill: 'rgba(54, 162, 235, 0.3)',
+      green: 'rgb(75, 255, 75)', greenFill: 'rgba(75, 255, 75, 0.3)',
+      blue: 'rgb(54, 162, 235)', blueFill: 'rgba(54, 162, 235, 0.3)',
       purple: 'rgb(153, 102, 255)',
       grey: 'rgb(201, 203, 207)'
     };
@@ -65,7 +63,15 @@
 						data: %FORECASTED_RAIN%,
 						type: 'line',
 						lineTension: 0
-				  	}
+				  	},
+					{
+						label: 'Overflow sprinkler opened',
+						backgroundColor: window.chartColors.redFill,
+						borderColor: window.chartColors.red,
+						data: %OVERFLOW%,
+						type: 'line',
+						lineTension: 0
+					}
         		]
 			},
 			options: {

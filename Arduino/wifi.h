@@ -3,8 +3,8 @@
 #include <WiFiClientSecureAxTLS.h>  // force use of AxTLS (BearSSL is default) - found example with AxTLS which works for me
 using namespace axTLS;
 
-const char *ssid = "a-router", *password = "D79EFFEC66";
-const char *host = "pdou-voda.herokuapp.com";
+#include "secrets.h"
+const char *ssid = WIFI_SSID, *password = WIFI_PASSWORD, *host = SERVER;
 #define INSERT_PATH   "/waterbag?insert_mm="
 #define LOG_PATH      "/waterbag?insert_log="
 #define COMMAND_PATH  "/waterbag/command"

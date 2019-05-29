@@ -9,10 +9,10 @@ class JawsDB:
 
     def __init__(self):
         db_config = dict(
-            host=os.environ['JAWSDB_HOST'], # "e7qyahb3d90mletd.chr7pe7iynqr.eu-west-1.rds.amazonaws.com",
-            user=os.environ['JAWSDB_USER'], # "r4ciyc670gz7dvrk",
-            passwd=os.environ['JAWSDB_PASSWD'], #"mi2yo0or7qe982m5",
-            database=os.environ['JAWSDB_DATABASE'] #"kqmfr11rudkj9abl"
+            host=os.environ['JAWSDB_HOST'],
+            user=os.environ['JAWSDB_USER'],
+            passwd=os.environ['JAWSDB_PASSWD'],
+            database=os.environ['JAWSDB_DATABASE']
         )
 
         try:

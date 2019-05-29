@@ -17,15 +17,15 @@
  */
 
 #include <NewPing.h>
-#include "MedianFilterLib.h"
+#include <MedianFilterLib.h>
 
 #define USE_DISPLAY
-#include "waterbag_display.h"
+#include "display.h"
 
-#include "waterbag_wifi.h"
+#include "wifi.h"
 
 #define USE_EEPROM  // optional, to be able to update configuration without flashing new software
-#include "waterbag_config.h"
+#include "config.h"
 
 #define AVG_WINDOW 30
 

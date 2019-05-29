@@ -49,7 +49,7 @@ def get_volume(db, tm_from, tm_now, tm_to):
         stored = []
         cursor.execute("SELECT time, mm FROM height"
                         " WHERE time BETWEEN %d and %d ORDER BY time"
-                       % (tm_from, tm_now))
+                       % (tm_from, tm_to))
         for (sec, mm) in cursor:
             stored.append((sec, volume_l(mm)))
         last_stored_ts = stored[-1][0]
@@ -69,17 +69,20 @@ def get_volume(db, tm_from, tm_now, tm_to):
             forecast[1] = (last_stored_ts, forecast[1][1])  # do not go back in time with first forecast
             # TODO forecast only proportionate part of rain?
 
+        total_open_s = 0
         overflow = []
         cursor.execute("SELECT time, msg FROM log"
                         " WHERE time BETWEEN %d and %d"
                         "   AND msg LIKE 'overflow_%%'" 
                         " ORDER BY time"
-                       % (tm_from, tm_now))
+                       % (tm_from, tm_to))
         for (log_ts, msg) in cursor:
             if msg.startswith('overflow_opened'):  # going up
                 overflow.append((log_ts, 0))
                 overflow.append((log_ts, MAX_VOLUME_L/6))
             if msg.startswith('overflow_closed'):  # going down
+                if len(overflow) > 0:
+                    total_open_s += log_ts - overflow[-1][0]
                 overflow.append((log_ts, MAX_VOLUME_L/6))
                 overflow.append((log_ts, 0))
         if len(overflow) > 0:
@@ -88,7 +91,8 @@ def get_volume(db, tm_from, tm_now, tm_to):
         cursor.close()
         return (timeseries_csv(stored), timeseries_csv(forecast), timeseries_csv(overflow),
                 stored[-1][1],
-                tm_now - overflow[-1][0] if len(overflow) > 0 and overflow[-1][1]>0 else -1)
+                tm_now - overflow[-1][0] if len(overflow) > 0 and overflow[-1][1]>0 else -1,
+                total_open_s)
     except mysql.connector.Error as err:
         return err.msg
         # TODO error handling!
@@ -101,11 +105,11 @@ def timeseries_csv(stored):
 
 def html_chart(db):
     tm_now = time.time()
-    (stored, forecasted_rain, overflow, now_l, overflow_s) = \
+    (stored, forecasted_rain, overflow, now_l, overflow_s, total_open_s) = \
         get_volume(db, tm_now - INTERVAL_PAST_S, tm_now, tm_now + INTERVAL_FUTURE_S)
     with open(CHART_TEMPLATE, 'r') as template_file:
         return template_file.read()\
-            .replace('%STATE%', '%dl, %s' % (now_l, ('overflow open %ds' % overflow_s) if overflow_s>=0 else 'overflow closed'))\
+            .replace('%STATE%', '%dl, %s, total %ds' % (now_l, ('overflow open %ds' % overflow_s) if overflow_s>=0 else 'overflow closed', total_open_s))\
             .replace('%STORED%', stored) \
             .replace('%OVERFLOW%', overflow) \
             .replace('%FORECASTED_RAIN%', forecasted_rain)\

@@ -1,40 +1,32 @@
-/* Arduino-like NodeMCU unit measures waterbag height using ultrasound sensor (SRF04)
- * and connects as a client over HTTPS to an API to insert the measurement into database
+/* Home Rain Water Storage Monitoring and Control
+ *  Arduino-like NodeMCU ESP8266 unit measures water level using ultrasound sensor (SR04).
+ *  It opens valve when a configured level is achieved (can as well be pump instead of valve).
+ *  Optionally connects as HTTPS client to an internet server with database to store measurements
+ *  and retrieve new configuration
  * 
  * - in fact distance from ceiling to waterbag top is measured, height is calculated as DIST_SENSOR_BOTTOM_MM - distance
- *   - DIST_SENSOR_BOTTOM_MM has to be calibrated based on installation
- *   - TODO store parameters to EEPROM and with each connection to server check if new configuration is available
+ *   - DIST_SENSOR_BOTTOM_MM has to be calibrated based on installation, can be changed also by inserting command on server
+ *   - TODO store parameters to EEPROM
  * - the server part must be deplayed at HOST and WiFi SSID and PASSWORD must be set to store and view the measurements
  *   - HTTPS is used without fingerprint or certificate, I'm using Heroku which does not allow HTTP
  * - tried also SRF05 sensor which should be more precise but it did not measure distance >= 700mm, may be faulty unit
  * - optional TM1637 4-digit display shows:
  *   - measured height (= DIST_SENSOR_BOTTOM_MM - measured distance)
  *   - wifi strength RSSI (negative number) when it is trying to send the measurement to server
- *   - OK result (spelled OH on display) or error code (ErNN where NN is two-digit error code)
- * - TODO open sprinkler valve when waterbag height reaches maximum
+ *   - OK result (spelled OH) or error code (ErNN where NN is two-digit error code)
  */
-
-#define USING_AXTLS
-#include <ESP8266WiFi.h>
-#include <WiFiClientSecureAxTLS.h>  // force use of AxTLS (BearSSL is default) - found example with AxTLS which works for me
-using namespace axTLS;
 
 #include <NewPing.h>
 #include "MedianFilterLib.h"
 
 #define USE_DISPLAY
-#ifdef USE_DISPLAY
 #include "waterbag_display.h"
-#endif
+
+#include "waterbag_wifi.h"
 
 #define USE_EEPROM  // optional, to be able to update configuration without flashing new software
 #include "waterbag_config.h"
 
-const char *ssid = "a-router", *password = "D79EFFEC66";
-const char *host = "pdou-voda.herokuapp.com";
-#define INSERT_PATH   "/waterbag?insert_mm="
-#define LOG_PATH      "/waterbag?insert_log="
-#define COMMAND_PATH  "/waterbag/command"
 #define AVG_WINDOW 30
 
 #define TRIGGER_PIN      D1  // ultrasound sensor
@@ -56,7 +48,7 @@ void setup() {
   pinMode(LED, OUTPUT);
   pinMode(OVERFLOW_PIN, OUTPUT);
   digitalWrite(LED, LOW);
-  digitalWrite(OVERFLOW_PIN, HIGH);  // the relay is activated by "grounded" pin, i.e. LOW voltage, HIGH means deactivated
+  digitalWrite(OVERFLOW_PIN, HIGH);  // the relay is activated by "grounded" pin, so HIGH means deactivated
 
   init_config(cfg);
   till_measure_s = 1;
@@ -75,38 +67,7 @@ void setup() {
   print_config(cfg);
 }
 
-void print_disp_err(String msg, int code) {
-  Serial.println(msg);
-  #ifdef USE_DISPLAY
-    disp_err(code);
-    delay(3000); // delays all measuring and sending but it is worth it to see the error
-  #endif
-}
 
-bool connect_wifi() {
-  Serial.println("WiFi.begin ssid: " +String(ssid));
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
-  for (int i=0; i < (int) cfg["WIFI_TIMEOUT_S"]; i++) {
-    if (WiFi.status() == WL_CONNECTED) {
-      Serial.print("WiFi.begin OK. IP address: ");
-      Serial.println(WiFi.localIP());
-      print_signal_strength();
-      return true;
-    }
-    delay(1000);
-  }
-  print_disp_err("WiFi.begin failed", 1);
-  return false;
-}
-
-void print_signal_strength() {
-  Serial.print("signal strength (RSSI): " + String(WiFi.RSSI()) + " dBm\n");
-  #ifdef USE_DISPLAY
-    disp.showNumberDec(WiFi.RSSI(), false);
-  #endif
-}
- 
 void loop() {
   if (till_measure_s <= 0) {
     measure();
@@ -168,19 +129,19 @@ void measure() {
 
 bool insert_height(int mm) {
   String ignored_response;
-  return get_url(INSERT_PATH + String(mm), ignored_response, true);
+  return get_url(INSERT_PATH + String(mm), ignored_response, true, (int) cfg["WIFI_TIMEOUT_S"]);
 }
 
 
 bool insert_log(String msg) {
   String ignored_response;
-  return get_url(LOG_PATH + msg, ignored_response, false);
+  return get_url(LOG_PATH + msg, ignored_response, false, (int) cfg["WIFI_TIMEOUT_S"]);
 }
 
 
 bool load_command() {
   String cmd;
-  if (!get_url(COMMAND_PATH, cmd, false)) {
+  if (!get_url(COMMAND_PATH, cmd, false, (int) cfg["WIFI_TIMEOUT_S"])) {
     return false;
   }
   if (cmd.startsWith("{")) {
@@ -193,51 +154,4 @@ bool load_command() {
   } else {
     Serial.println("UNKNOWN COMMAND: " + cmd);
   }
-}
-
-
-bool get_url(String url, String &response, bool check_ok) {
-  if (!connect_wifi()) return false;
-
-  WiFiClientSecure client;
-  Serial.println("WiFiClientSecure.connect to " + String(host));
-
-  if (!client.connect(host, 443)) {
-    print_disp_err("WiFiClientSecure.connect failed", 3);
-    return false;
-  }
-
-  Serial.print("requesting URL: " + String(url) + " ... ");
-
-  client.print(String("GET ") + url + " HTTP/1.1\r\n" +
-               "Host: " + host + "\r\n" +
-               "User-Agent: WaterbagHeightSensorESP8266\r\n" +
-               "Connection: close\r\n\r\n");
-
-  Serial.println("request sent");
-  while (client.connected()) {
-    String line = client.readStringUntil('\n');
-    if (line == "\r") {
-      Serial.println("headers received");
-      break;
-    }
-  }
-  response = client.readString();
-
-  Serial.println("reply: ");
-  Serial.println(response);
-
-  if (!check_ok) return true;
-  if (response.startsWith("OK")) {
-    WiFi.disconnect();
-    #ifdef USE_DISPLAY
-      disp.setSegments(disp_OK);
-      delay(3000);
-    #endif
-    return true;
-  } else {
-    print_disp_err("response not OK", 4);
-  }
-
-  return false;
 }

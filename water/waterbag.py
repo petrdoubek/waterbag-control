@@ -1,11 +1,14 @@
 import logging
+import math
 import mysql.connector
 import time
 
 
-MAX_VOLUME_L = 3000;
-MAX_HEIGHT_MM = 600;
-ROOF_AREA_M2 = 55;
+MAX_VOLUME_L = 3000
+FLAT_WIDTH_MM = 2000  # width of flat waterbag, used for 'oval' volume approximation
+MAX_HEIGHT_MM = 600
+ROOF_AREA_M2 = 55
+VOLUME_METHOD = 'oval'
 
 
 def handle_get(url, params, wfile):
@@ -112,16 +115,25 @@ def pop_command(db):
     return rsp
 
 
+def waterbag_cut_mm2(height_mm, flat_width_mm):
+    """approximate area of waterbag cut: assume constant circumference (2*flat_width)
+    and shape of half-circle at either side (total one circle with r=height_mm/2 with rectangle between them"""
+    r_mm = height_mm / 2
+    return math.pi * pow(r_mm, 2) + height_mm * (flat_width_mm - math.pi * r_mm)
+
+
 def volume_l(height_mm):
-    """linear approximation, in reality the bag cut at low height resembles a rectangle and at high volume an ellipse;
-       therefore the volume per mm is heigher at smaller height than at max height
-       assumption is circumference is constant, that could be used for better approximation"""
-    return height_mm * MAX_VOLUME_L / MAX_HEIGHT_MM;
+    """linear approximation will work for tanks with constant horizontal area
+       oval is approximation for bag which gets rounder with increasing height"""
+    if VOLUME_METHOD == 'linear':
+        return height_mm * MAX_VOLUME_L / MAX_HEIGHT_MM
+    elif VOLUME_METHOD == 'oval':
+        return waterbag_cut_mm2(height_mm, FLAT_WIDTH_MM) * MAX_VOLUME_L / waterbag_cut_mm2(MAX_HEIGHT_MM, FLAT_WIDTH_MM)
 
 
 def rain_l(rain_mm):
     """conversion from precipitation mm to liters of water harvested"""
-    return rain_mm * ROOF_AREA_M2;
+    return rain_mm * ROOF_AREA_M2
 
 
 def main():

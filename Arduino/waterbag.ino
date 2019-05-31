@@ -27,8 +27,6 @@
 #define USE_EEPROM  // optional, to be able to update configuration without flashing new software
 #include "config.h"
 
-#define AVG_WINDOW 30
-
 #define TRIGGER_PIN      D1  // ultrasound sensor
 #define ECHO_PIN         D2  // ultrasound sensor
 #define OVERFLOW_PIN     D5  // connected to relay that opens valve to release water somewhere
@@ -36,7 +34,7 @@
 #define LED              D7  // blink when measuring - nice to have
 
 NewPing sonar(TRIGGER_PIN, ECHO_PIN, (int) cfg["MAX_DETECT_CM"]);
-MedianFilter<int> medianFilter(30); //(int) cfg["AVG_WINDOW"]);
+MedianFilter<int> medianFilter(30);  // TODO cfg["AVG_WINDOW"] - then it must be pointer and it has to be recreated when setup changes
 
 float last_sent_mm = 100000.0;
 int till_measure_s, till_send_s, till_force_send_s;

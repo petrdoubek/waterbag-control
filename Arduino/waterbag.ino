@@ -6,7 +6,6 @@
  * 
  * - in fact distance from ceiling to waterbag top is measured, height is calculated as DIST_SENSOR_BOTTOM_MM - distance
  *   - DIST_SENSOR_BOTTOM_MM has to be calibrated based on installation, can be changed also by inserting command on server
- *   - TODO store parameters to EEPROM
  * - the server part must be deplayed at HOST and WiFi SSID and PASSWORD must be set to store and view the measurements
  *   - HTTPS is used without fingerprint or certificate, I'm using Heroku which does not allow HTTP
  * - tried also SRF05 sensor which should be more precise but it did not measure distance >= 700mm, may be faulty unit
@@ -38,7 +37,7 @@ MedianFilter<int> medianFilter(30);  // TODO cfg["AVG_WINDOW"] - then it must be
 
 float last_sent_mm = 100000.0;
 int till_measure_s, till_send_s, till_force_send_s;
-bool overflow_opened = false;
+bool measured = false, overflow_opened = false;
 
 
 void setup() {
@@ -58,10 +57,12 @@ void setup() {
     disp.setBrightness(8); // range 8-15
   #endif
   #ifdef USE_EEPROM
+    eeprom_init();
     Serial.println("loading config ...");
     read_config(cfg);
     store_config(cfg);
   #endif
+  Serial.print("using config: ");
   print_config(cfg);
 }
 
@@ -73,7 +74,6 @@ void loop() {
     
     // open or close the overflow valve if needed
     int filtered_height_mm = medianFilter.GetFiltered();
-    Serial.println("opened? "+ String(overflow_opened));
     
     if (!overflow_opened && filtered_height_mm >= (int) cfg["TRIGGER_OVERFLOW_MM"]) {
       digitalWrite(OVERFLOW_PIN, LOW);
@@ -87,7 +87,7 @@ void loop() {
     }
     
   }
-  if (till_send_s <= 0) {
+  if (till_send_s <= 0 && measured) {
     int filtered_mm = medianFilter.GetFiltered();
     if (till_force_send_s <= 0 || abs(last_sent_mm - filtered_mm) >= (int) cfg["MIN_CHANGE_MM"]) {
       if (insert_height(round(filtered_mm))) {
@@ -114,14 +114,19 @@ void measure() {
    * also there's ping_median(iterations) to get more robust result */
   digitalWrite(LED, HIGH);
   int dist_mm = (343 * (int) sonar.ping_median((int) cfg["N_PINGS"], (int) cfg["MAX_DETECT_CM"])) / 2000;
-  int height_mm = (int) cfg["DIST_SENSOR_BOTTOM_MM"] - dist_mm;
-  Serial.printf("measurement: const %dmm - distance %dmm = height %dmm    ", (int) cfg["DIST_SENSOR_BOTTOM_MM"], dist_mm, height_mm);
-  digitalWrite(LED, LOW);
-  medianFilter.AddValue(height_mm);
-  Serial.printf("median %4dmm\n", medianFilter.GetFiltered());
-  #ifdef USE_DISPLAY
-    disp.showNumberDec(height_mm, false);
-  #endif
+  if (dist_mm > 0) {
+    int height_mm = (int) cfg["DIST_SENSOR_BOTTOM_MM"] - dist_mm;
+    Serial.printf("measurement: const %dmm - distance %dmm = height %dmm    ", (int) cfg["DIST_SENSOR_BOTTOM_MM"], dist_mm, height_mm);
+    digitalWrite(LED, LOW);
+    medianFilter.AddValue(height_mm);
+    Serial.printf("median %4dmm\n", medianFilter.GetFiltered());
+    #ifdef USE_DISPLAY
+      disp.showNumberDec(height_mm, false);
+    #endif
+    measured = true;
+  } else {
+    print_disp_err("measurement failed: distance <= 0", 5);
+  }
 }
 
 

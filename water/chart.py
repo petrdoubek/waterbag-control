@@ -1,4 +1,3 @@
-import json
 import logging
 import mysql.connector
 import time
@@ -31,40 +30,31 @@ def handle_get(url, params, wfile):
     wfile.write(bytes(rsp, 'utf-8'))
 
 
-def li_parameters(sensor_config):
-    """return list of parameters as a string, each parameter starting with <li> tag"""
-    params = { 'roof_area_m2': ROOF_AREA_M2, **sensor_config }
-    return ''.join([ "<li>%s: %s\n" % (par,val) for par,val in params.items() ])
-
-
-def get_volume(db, tm_from, tm_now, tm_to):
+def get_data(db, tm_from, tm_now, tm_to):
     """returns:
        - time series [{t,stored}] printed as string
        - time series [{t,forecast}] printed as string
        - time series [{t,0 or CONST * MAX_VOLUME_L based on overflow closed/opened}] printed as a string
        - current volume
-       - how many seconds is overflow opened (or -1 if closed)"""
+       - how many seconds is overflow opened (or -1 if closed)
+       - how long was the overflow opened in seconds over the time between tm_from and tm_now"""
     try:
         cursor = db.db.cursor()
 
         stored = read_stored(cursor, tm_from, tm_to)
-        last_stored_ts = stored[-1][0]
+        last_stored_ts, last_stored_l = stored[-1]
 
-        forecast = read_forecast(cursor, last_stored_ts, stored[-1][1], tm_now, tm_to)
+        forecast = read_forecast(cursor, last_stored_ts, last_stored_l, tm_now, tm_to)
 
         overflow, total_open_s = read_overflow(cursor, last_stored_ts, tm_from, tm_to)
 
-        sensor_config = read_sensor_config(cursor)
-
         cursor.close()
         return (timeseries_csv(stored), timeseries_csv(forecast), timeseries_csv(overflow),
-                stored[-1][1],
+                last_stored_l,
                 tm_now - overflow[-1][0] if len(overflow) > 0 and overflow[-1][1]>0 else -1,
-                total_open_s,
-                sensor_config)
+                total_open_s)
     except mysql.connector.Error as err:
         return err.msg
-        # TODO error handling!
 
 
 def read_stored(cursor, tm_from, tm_to):
@@ -117,16 +107,6 @@ def read_overflow(cursor, last_stored_ts, tm_from, tm_to):
     return overflow, total_open_s
 
 
-def read_sensor_config(cursor):
-    cursor.execute("SELECT time, cmd FROM command "
-                   " WHERE popped='Y'"
-                   "   AND cmd LIKE '{%%}'"
-                   " ORDER BY time desc LIMIT 1")
-    for (cmd_ts, cmd) in cursor:
-        return json.loads(cmd)
-    return dict()
-
-
 def timeseries_csv(stored):
     stored_string = '[' + ','.join(["{t:%d,y:%d}" % (1000 * sec, l) for (sec, l) in stored]) + ']'
     return stored_string
@@ -134,16 +114,15 @@ def timeseries_csv(stored):
 
 def html_chart(db):
     tm_now = time.time()
-    (stored, forecasted_rain, overflow, now_l, overflow_s, total_open_s, sensor_config) = \
-        get_volume(db, tm_now - INTERVAL_PAST_S, tm_now, tm_now + INTERVAL_FUTURE_S)
+    (stored, forecasted_rain, overflow, now_l, overflow_s, total_open_s) = \
+        get_data(db, tm_now - INTERVAL_PAST_S, tm_now, tm_now + INTERVAL_FUTURE_S)
     with open(CHART_TEMPLATE, 'r') as template_file:
         return template_file.read()\
             .replace('%STATE%', '%dl, %s, total %ds' % (now_l, ('overflow open %ds' % overflow_s) if overflow_s>=0 else 'overflow closed', total_open_s))\
             .replace('%STORED%', stored) \
             .replace('%OVERFLOW%', overflow) \
             .replace('%FORECASTED_RAIN%', forecasted_rain)\
-            .replace('%MAX_L%', '%d' % round(1.5*MAX_VOLUME_L))\
-            .replace('%PARAMETERS%', li_parameters(sensor_config))
+            .replace('%MAX_L%', '%d' % round(1.5*MAX_VOLUME_L))
 
 
 def main():
@@ -155,7 +134,9 @@ def main():
 if __name__ == "__main__":
     from jawsdb import JawsDB
     from waterbag import volume_l, rain_l, MAX_VOLUME_L, ROOF_AREA_M2
+    from openweather import CITY
     main()
 else:
     from .jawsdb import JawsDB
     from .waterbag import volume_l, rain_l, MAX_VOLUME_L, ROOF_AREA_M2
+    from .openweather import CITY

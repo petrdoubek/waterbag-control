@@ -13,7 +13,7 @@
 	</style>
 </style></head>
 
-<body>
+<body style="font-family:arial;">
 	<h3>Waterbag: %STATE%</h3>
 	<p> <a href="chart?hours=8">8 hours</a> |
 		<a href="chart?days=1">1 day</a> |
@@ -25,24 +25,34 @@
 		<a href="waterbag">height table</a> |
 		<a href="forecast/html">forecast table</a> |
 		<a href="waterbag/log">log</a>
+		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+		<a href="config">configuration</a>
 	</p>
 	<div style="width:100%"><div class="chartjs-size-monitor"><div class="chartjs-size-monitor-expand"><div class=""></div></div><div class="chartjs-size-monitor-shrink"><div class=""></div></div></div>
 		<canvas id="chart1" width="100%" height="400" style="display: block;" class="chartjs-render-monitor"></canvas>
 	</div>
 	<script>
-    window.chartColors = {
-      red: 'rgb(255, 99, 132)', redFill: 'rgb(255, 99, 132, 0.3)',
-      orange: 'rgb(255, 159, 64)',
-      yellow: 'rgb(255, 205, 86)',
-      green: 'rgb(75, 255, 75)', greenFill: 'rgba(75, 255, 75, 0.3)',
-      blue: 'rgb(54, 162, 235)', blueFill: 'rgba(54, 162, 235, 0.3)',
-      purple: 'rgb(153, 102, 255)',
-      grey: 'rgb(201, 203, 207)'
-    };
+		window.chartColors = {
+		  red: 'rgb(255, 99, 132)', redFill: 'rgb(255, 99, 132, 0.3)',
+		  orange: 'rgb(255, 159, 64)',
+		  yellow: 'rgb(255, 205, 86)',
+		  green: 'rgb(75, 255, 75)', greenFill: 'rgba(75, 255, 75, 0.3)',
+		  blue: 'rgb(54, 162, 235)', blueFill: 'rgba(54, 162, 235, 0.3)',
+		  purple: 'rgb(153, 102, 255)',
+		  grey: 'rgb(201, 203, 207)'
+		};
+
+		var w = window,
+			d = document,
+			e = d.documentElement,
+			g = d.getElementsByTagName('body')[0],
+			width = w.innerWidth || e.clientWidth || g.clientWidth,
+			height = w.innerHeight|| e.clientHeight|| g.clientHeight;
 
 		var ctx = document.getElementById('chart1').getContext('2d');
-		ctx.canvas.width = 1000;
-		ctx.canvas.height = 400;
+		ctx.canvas.width = width - 20;
+		ctx.canvas.height = Math.min(height - 100, 500);
+		Chart.defaults.global.defaultFontSize = 14;
 
 		var cfg = {
 			type: 'line',
@@ -114,9 +124,5 @@
 		var chart = new Chart(ctx, cfg);
 
 	</script>
-	<h3>Parameters</h3>
-	<ul>
-	%PARAMETERS%
-	</ul>
 
 </body></html>

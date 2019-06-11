@@ -12,6 +12,7 @@ import urllib
 import water.waterbag
 import water.openweather
 import water.chart
+import water.config
 
 logging.basicConfig(stream=sys.stdout,
                     level=logging.INFO,
@@ -23,13 +24,6 @@ CFG = None
 class Config:
     def __init__(self):
         pass
-
-
-def info_text(cfg):
-    safe = dict(cfg.__dict__)
-    safe['TOKEN'] = 'yes' if safe['TOKEN'] is not None else 'no'
-    return "<p>I'm here. Your web server for zonky robot.\n<pre>\n%s\n</pre>\n"\
-           % pprint.pformat(safe, depth=2, width=120)
 
 
 class RequestHandler(BaseHTTPRequestHandler):
@@ -50,16 +44,10 @@ class RequestHandler(BaseHTTPRequestHandler):
             water.openweather.handle_get(parsed_url, parsed_params, self.wfile)
         elif parsed_url.path.startswith('/chart'):
             water.chart.handle_get(parsed_url, parsed_params, self.wfile)
+        elif parsed_url.path.startswith('/config'):
+            water.config.handle_get(parsed_url, parsed_params, self.wfile)
         else:
             self.wfile.write(bytes("UNKNOWN REQUEST", 'utf-8'))
-
-    def handle_as_future(self):
-        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-            logging.info("submitting future")
-            future = executor.submit(water.waterbag.handle_get, self.path, self.wfile)
-            logging.info("waiting for result")
-            future.result(timeout=10)
-            logging.info("result returned")
 
 
 class Web(threading.Thread):

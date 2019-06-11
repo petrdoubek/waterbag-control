@@ -2,8 +2,19 @@ import json
 import logging
 import mysql.connector
 
+from .jawsdb import JawsDB
 
-def handle_get(url, params, wfile):
+CONFIG = dict(
+    max_height_mm = 600,    # maximum allowed waterbag height (or water level in water tank)
+    max_volume_l = 3000,    # volume at max_height_mm
+    flat_width_mm = 2000,   # width of flat waterbag, used for 'oval' volume approximation
+    roof_area_m2 = 55,      # area from which rain water is collected, used in connection with precipitation forecast
+    volume_method = 'oval', # approximation method
+    city = 'pardubice,cz'
+)
+
+
+def handle_get(cfg, url, params, wfile):
     db = JawsDB()
     rsp = ""
 
@@ -12,7 +23,7 @@ def handle_get(url, params, wfile):
     if any(value is not None for value in params.values()):
         rsp = "UPDATE OF PARAMETERS NOT IMPLEMENTED"
     else:
-        rsp = table_parameters(db)
+        rsp = table_parameters(cfg, db)
 
     if rsp == "":
         rsp = "UNKNOWN REQUEST"
@@ -20,7 +31,7 @@ def handle_get(url, params, wfile):
     wfile.write(bytes(rsp, 'utf-8'))
 
 
-def table_parameters(db):
+def table_parameters(cfg, db):
     """return table of parameters as a string, including form to enter new parameters"""
     sensor_config_current, sensor_config_new = get_data(db)
 
@@ -30,7 +41,7 @@ def table_parameters(db):
            '<table cellpadding=2 border=1>' \
            '<tr><th>Parameter</th><th>Current value</th><th>Waiting value</th><th>Enter new value</th></tr>'
 
-    params = { 'roof_area_m2': ROOF_AREA_M2, 'city': CITY, **sensor_config_current }
+    params = { **cfg, **sensor_config_current }
 
     for key, value in params.items():
         html += ('<tr><td>%s</td><td align=right>%s</td><td align=right>%s</td><td><input type="text" name="%s"></td></tr>' %
@@ -75,20 +86,3 @@ def read_sensor_config(cursor):
          cfg_new = json.loads(cmd)
 
     return cfg_current, cfg_new
-
-
-def main():
-    """if this module is run, connect to the database and print out the chart"""
-    db = JawsDB()
-    print(table_parameters(db))
-
-
-if __name__ == "__main__":
-    from jawsdb import JawsDB
-    from waterbag import MAX_VOLUME_L, ROOF_AREA_M2
-    from openweather import CITY
-    main()
-else:
-    from .jawsdb import JawsDB
-    from .waterbag import MAX_VOLUME_L, ROOF_AREA_M2
-    from .openweather import CITY

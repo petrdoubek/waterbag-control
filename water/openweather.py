@@ -5,15 +5,12 @@ import os
 import requests
 import time
 
-
 INTERVAL_S = 3*3600
-CITY = 'pardubice,cz'
 APPID = os.environ['OPENWEATHER_APPID']
-URL = "http://api.openweathermap.org/data/2.5/forecast?q=pardubice,cz&mode=json&appid=13940fe7b67b11cff3cd0c2f8c0b526d"
-# TODO remove keys from code
+URL = "http://api.openweathermap.org/data/2.5/forecast?q=%s&mode=json&appid=%s"
 
 
-def handle_get(url, params, wfile):
+def handle_get(cfg, url, params, wfile):
     db = JawsDB()
     rsp = ""
 
@@ -22,7 +19,7 @@ def handle_get(url, params, wfile):
     if url.path.endswith('/html'):
         rsp += "<pre>\n" + read_forecast(db, time.time()) + "</pre>\n"
     if url.path.endswith('/update'):
-        insert_forecasts(db, get_forecast())
+        insert_forecasts(cfg, db, get_forecast(cfg))
         rsp += "UPDATE OK"
 
     if rsp == "":
@@ -31,10 +28,10 @@ def handle_get(url, params, wfile):
     wfile.write(bytes(rsp, 'utf-8'))
 
 
-def get_forecast():
+def get_forecast(cfg):
     """retrieve 5day/3hr forecasts, return list of tuples (timestamp of 3hr period start, precipitation forecast in mm)"""
     forecast = []
-    rsp = requests.get(URL)
+    rsp = requests.get(URL % (cfg['city'], APPID))
     if rsp.status_code == 200:
         jsn = rsp.json()
         if 'list' in jsn:
@@ -108,8 +105,6 @@ def main():
                 db.delete_all('forecast')
             else:
                 print("please confirm deletion of table including all data: %s delete_height really_do" % sys.argv[0])
-        if sys.argv[1] == 'download':
-            insert_forecasts(db, get_forecast())
 
     print(read_forecast(db, time.time()))
 

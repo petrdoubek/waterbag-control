@@ -4,8 +4,6 @@ import logging
 import threading
 import os
 import sys
-import pprint
-import concurrent.futures
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import urllib
 
@@ -19,11 +17,6 @@ logging.basicConfig(stream=sys.stdout,
                     format='%(funcName)-20s %(message)s')
 
 CFG = None
-
-
-class Config:
-    def __init__(self):
-        pass
 
 
 class RequestHandler(BaseHTTPRequestHandler):
@@ -41,11 +34,11 @@ class RequestHandler(BaseHTTPRequestHandler):
         if parsed_url.path.startswith('/waterbag'):
             water.waterbag.handle_get(parsed_url, parsed_params, self.wfile)
         elif parsed_url.path.startswith('/forecast'):
-            water.openweather.handle_get(parsed_url, parsed_params, self.wfile)
+            water.openweather.handle_get(CFG, parsed_url, parsed_params, self.wfile)
         elif parsed_url.path.startswith('/chart'):
-            water.chart.handle_get(parsed_url, parsed_params, self.wfile)
+            water.chart.handle_get(CFG, parsed_url, parsed_params, self.wfile)
         elif parsed_url.path.startswith('/config'):
-            water.config.handle_get(parsed_url, parsed_params, self.wfile)
+            water.config.handle_get(CFG, parsed_url, parsed_params, self.wfile)
         else:
             self.wfile.write(bytes("UNKNOWN REQUEST", 'utf-8'))
 
@@ -75,7 +68,7 @@ def new_daemon(dmn):
 
 def run_threads():
     global CFG
-    CFG = Config()
+    CFG = water.config.CONFIG
 
     thr_web = new_daemon(Web(CFG))
     thr_web.join()

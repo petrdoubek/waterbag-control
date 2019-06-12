@@ -12,7 +12,6 @@ void init_config(StaticJsonDocument<EEPROM_SIZE> &cfg) {
   cfg["CYCLE_MEASURE_S"] = 4;
   cfg["CYCLE_SEND_S"] = 30;  // sending rather often to test when first connected, set higher later
   cfg["FORCE_SEND_S"] = 600; // dtto
-  cfg["AVG_WINDOW"] = 30;    // TODO currently not used it would mean dynamic allocation of the medianFilter
   cfg["WIFI_TIMEOUT_S"] = 30;
 }
 

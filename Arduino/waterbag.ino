@@ -1,7 +1,9 @@
-/* Home Rain Water Storage Monitoring and Control
+/* 
+ *  Home Rain Water Storage Monitoring and Control
+ *  
  *  Arduino-like NodeMCU ESP8266 unit measures water level using ultrasound sensor (SR04).
  *  It opens valve when a configured level is achieved (can as well be pump instead of valve).
- *  Optionally connects as HTTPS client to an internet server with database to store measurements
+ *  Optionally, it connects as HTTPS client to a server with database to store measurements
  *  and retrieve new configuration
  * 
  * - in fact distance from ceiling to waterbag top is measured, height is calculated as DIST_SENSOR_BOTTOM_MM - distance
@@ -18,7 +20,7 @@
 #include <NewPing.h>
 #include <MedianFilterLib.h>
 
-#define USE_DISPLAY
+#define USE_DISPLAY // optional, use 4 digit TM1637 display for debugging
 #include "display.h"
 
 #include "wifi.h"
@@ -33,7 +35,7 @@
 #define LED              D7  // blink when measuring - nice to have
 
 NewPing sonar(TRIGGER_PIN, ECHO_PIN, (int) cfg["MAX_DETECT_CM"]);
-MedianFilter<int> medianFilter(30);  // TODO cfg["AVG_WINDOW"] - then it must be pointer and it has to be recreated when setup changes
+MedianFilter<int> medianFilter(30);  // median filter window fixed to 30 measurements, easier than configurable
 
 float last_sent_mm = 100000.0;
 int till_measure_s, till_send_s, till_force_send_s;
@@ -48,6 +50,7 @@ void setup() {
   digitalWrite(OVERFLOW_PIN, HIGH);  // the relay is activated by "grounded" pin, so HIGH means deactivated
 
   init_config(cfg);
+
   till_measure_s = 1;
   till_send_s = cfg["CYCLE_SEND_S"];
   till_force_send_s = cfg["FORCE_SEND_S"];
@@ -56,6 +59,7 @@ void setup() {
   #ifdef USE_DISPLAY
     disp.setBrightness(8); // range 8-15
   #endif
+  
   #ifdef USE_EEPROM
     eeprom_init();
     Serial.println("loading config ...");
@@ -87,6 +91,7 @@ void loop() {
     }
     
   }
+  
   if (till_send_s <= 0 && measured) {
     int filtered_mm = medianFilter.GetFiltered();
     if (till_force_send_s <= 0 || abs(last_sent_mm - filtered_mm) >= (int) cfg["MIN_CHANGE_MM"]) {
@@ -108,6 +113,7 @@ void loop() {
   till_force_send_s -= skip_s;
   delay(1000*skip_s);
 }
+
 
 void measure() {
   /* try https://github.com/eliteio/Arduino_New_Ping it claims to use something more reliable than PulseIn

@@ -3,17 +3,6 @@
 #define EEPROM_SIZE  512
 StaticJsonDocument<EEPROM_SIZE> cfg;
 
-void init_config(StaticJsonDocument<EEPROM_SIZE> &cfg) {
-  cfg["DIST_SENSOR_BOTTOM_MM"] = 1660; // MUST BE CALIBRATED, DISTANCE THE SENSOR MEASURES WHEN STORAGE IS EMPTY
-  cfg["TRIGGER_OVERFLOW_MM"] = 600;    // MUST BE SET BASED ON WATERBAG OR TANK MAX LEVEL
-  cfg["MAX_DETECT_CM"] = 1000;
-  cfg["N_PINGS"] = 19;
-  cfg["MIN_CHANGE_MM"] = 3;  // my SRF04 unit seems to be quite precise (when combined with median filter), send even small changes
-  cfg["CYCLE_MEASURE_S"] = 4;
-  cfg["CYCLE_SEND_S"] = 30;  // sending rather often to test when first connected, set higher later
-  cfg["FORCE_SEND_S"] = 600; // dtto
-  cfg["WIFI_TIMEOUT_S"] = 30;
-}
 
 void print_config(StaticJsonDocument<EEPROM_SIZE> &cfg) {
   char bytes[EEPROM_SIZE];
@@ -22,6 +11,7 @@ void print_config(StaticJsonDocument<EEPROM_SIZE> &cfg) {
   }
   Serial.println(bytes);  
 }
+
 
 void config_from_string(String bytes) {
   StaticJsonDocument<EEPROM_SIZE> check_cfg;
@@ -36,8 +26,10 @@ void config_from_string(String bytes) {
   }  
 }
 
+
 #ifdef USE_EEPROM
 #include <EEPROM.h>
+
 
 void eeprom_init() {
   EEPROM.begin(EEPROM_SIZE);

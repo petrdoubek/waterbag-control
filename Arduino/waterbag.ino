@@ -17,6 +17,20 @@
  *   - OK result (spelled OH) or error code (ErNN where NN is two-digit error code)
  */
 
+// pins, not all are mandatory
+#define TRIGGER_PIN      D1  // ultrasound sensor
+#define ECHO_PIN         D2  // ultrasound sensor
+#define DIO_PIN          D3  // display - optional
+#define CLK_PIN          D4  // display - optional
+#define OVERFLOW_PIN     D5  // connected to relay that opens valve to release water somewhere
+#define IRRIGATION_PIN   D6  // currently not used
+#define LED              D7  // blink when measuring - optional
+
+// server resources, base URL of the server (like https://example.dom) is defined in secrets.h as SERVER
+#define INSERT_PATH   "/waterbag?insert_mm="
+#define LOG_PATH      "/waterbag?insert_log="
+#define COMMAND_PATH  "/waterbag/command"
+
 #include <NewPing.h>
 #include <MedianFilterLib.h>
 
@@ -28,18 +42,25 @@
 #define USE_EEPROM  // optional, to be able to update configuration without flashing new software
 #include "config.h"
 
-#define TRIGGER_PIN      D1  // ultrasound sensor
-#define ECHO_PIN         D2  // ultrasound sensor
-#define OVERFLOW_PIN     D5  // connected to relay that opens valve to release water somewhere
-#define IRRIGATION_PIN   D6  // currently not used
-#define LED              D7  // blink when measuring - nice to have
-
 NewPing sonar(TRIGGER_PIN, ECHO_PIN, (int) cfg["MAX_DETECT_CM"]);
 MedianFilter<int> medianFilter(30);  // median filter window fixed to 30 measurements, easier than configurable
 
 float last_sent_mm = 100000.0;
 int till_measure_s, till_send_s, till_force_send_s;
 bool measured = false, overflow_opened = false;
+
+
+void init_config(StaticJsonDocument<EEPROM_SIZE> &cfg) {
+  cfg["DIST_SENSOR_BOTTOM_MM"] = 1660; // MUST BE CALIBRATED, DISTANCE THE SENSOR MEASURES WHEN STORAGE IS EMPTY
+  cfg["TRIGGER_OVERFLOW_MM"] = 600;    // MUST BE SET BASED ON WATERBAG OR TANK MAX LEVEL
+  cfg["MAX_DETECT_CM"] = 1000;
+  cfg["N_PINGS"] = 19;
+  cfg["MIN_CHANGE_MM"] = 3;  // my SR04 unit seems to be quite precise (when combined with median filter), send even small changes
+  cfg["CYCLE_MEASURE_S"] = 4;
+  cfg["CYCLE_SEND_S"] = 30;  // sending rather often to test when first connected, set higher later
+  cfg["FORCE_SEND_S"] = 600; // dtto
+  cfg["WIFI_TIMEOUT_S"] = 30;
+}
 
 
 void setup() {

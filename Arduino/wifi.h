@@ -5,9 +5,6 @@ using namespace axTLS;
 
 #include "secrets.h"
 const char *ssid = WIFI_SSID, *password = WIFI_PASSWORD, *host = SERVER;
-#define INSERT_PATH   "/waterbag?insert_mm="
-#define LOG_PATH      "/waterbag?insert_log="
-#define COMMAND_PATH  "/waterbag/command"
 
 
 void print_signal_strength() {
@@ -51,7 +48,7 @@ bool get_url(String url, String &response, bool check_ok, int timeout) {
 
   client.print(String("GET ") + url + " HTTP/1.1\r\n" +
                "Host: " + host + "\r\n" +
-               "User-Agent: WaterbagHeightSensorESP8266\r\n" +
+               "User-Agent: ESP8266\r\n" +
                "Connection: close\r\n\r\n");
 
   Serial.println("request sent");

@@ -1,10 +1,7 @@
 #ifdef USE_DISPLAY
 #include <TM1637Display.h>
 
-#define CLK D4
-#define DIO D3
-
-TM1637Display disp(CLK, DIO);
+TM1637Display disp(CLK_PIN, DIO_PIN);
 
 // segments:
 //   -      A
@@ -35,6 +32,6 @@ void print_disp_err(String msg, int code) {
   Serial.println(msg);
   #ifdef USE_DISPLAY
     disp_err(code);
-    delay(3000); // delays all measuring and sending but it is worth it to see the error
+    delay(3000); // delays all other tasks but it is worth it to see the error
   #endif
 }

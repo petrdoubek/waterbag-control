@@ -11,6 +11,7 @@ import water.waterbag
 import water.openweather
 import water.chart
 import water.config
+import water.air
 
 logging.basicConfig(stream=sys.stdout,
                     level=logging.INFO,
@@ -39,6 +40,8 @@ class RequestHandler(BaseHTTPRequestHandler):
             water.chart.handle_get(CFG, parsed_url, parsed_params, self.wfile)
         elif parsed_url.path.startswith('/config'):
             water.config.handle_get(CFG, parsed_url, parsed_params, self.wfile)
+        elif parsed_url.path.startswith('/air'):
+            water.air.handle_get(parsed_url, parsed_params, self.wfile)
         else:
             self.wfile.write(bytes("UNKNOWN REQUEST", 'utf-8'))
 

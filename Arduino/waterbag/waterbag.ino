@@ -31,20 +31,22 @@
 #define LOG_PATH      "/waterbag?insert_log="
 #define COMMAND_PATH  "/waterbag/command"
 
-#include <NewPing.h>
-#include <MedianFilterLib.h>
+#define USE_EEPROM  // optional, to be able to update configuration without flashing new software
+#include "JsonConfig.h"
+JsonConfig jcfg;
 
 #define USE_DISPLAY // optional, use 4 digit TM1637 display for debugging
 #include "Display4Digit.h"
 Display4Digit disp4(CLK_PIN, DIO_PIN);
 
-#include "wifi.h"
+#include "secrets.h"
+#include "WiFiClientHTTPS.h"
+WiFiClientHTTPS wific(WIFI_SSID, WIFI_PASSWORD, SERVER, &disp4);
 
-#define USE_EEPROM  // optional, to be able to update configuration without flashing new software
-#include "JsonConfig.h"
-JsonConfig jcfg;
-
+#include <NewPing.h>
 NewPing sonar(TRIGGER_PIN, ECHO_PIN);
+
+#include <MedianFilterLib.h>
 MedianFilter<int> medianFilter(30);  // median filter window fixed to 30 measurements, easier than configurable
 
 float last_sent_mm = 100000.0;
@@ -164,19 +166,19 @@ void measure() {
 
 bool insert_height(int mm) {
   String ignored_response;
-  return get_url(INSERT_PATH + String(mm), ignored_response, true, (int) jcfg.val["WIFI_TIMEOUT_S"]);
+  return wific.get_url(INSERT_PATH + String(mm), ignored_response, true, (int) jcfg.val["WIFI_TIMEOUT_S"]);
 }
 
 
 bool insert_log(String msg) {
   String ignored_response;
-  return get_url(LOG_PATH + msg, ignored_response, false, (int) jcfg.val["WIFI_TIMEOUT_S"]);
+  return wific.get_url(LOG_PATH + msg, ignored_response, false, (int) jcfg.val["WIFI_TIMEOUT_S"]);
 }
 
 
 bool load_command() {
   String cmd;
-  if (!get_url(COMMAND_PATH, cmd, false, (int) jcfg.val["WIFI_TIMEOUT_S"])) {
+  if (!wific.get_url(COMMAND_PATH, cmd, false, (int) jcfg.val["WIFI_TIMEOUT_S"])) {
     return false;
   }
   if (cmd.startsWith("{")) {

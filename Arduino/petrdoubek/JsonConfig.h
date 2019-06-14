@@ -19,7 +19,7 @@ class JsonConfig {
       if (serializeJson(val, bytes) == 0) { // returns number of bytes
         Serial.println("JSON serialization failed");
       }
-      Serial.println(bytes);  
+      Serial.println(bytes);
     }
 
     bool loadJSON(const StaticJsonDocument<EEPROM_SIZE> &check_cfg) {
@@ -28,10 +28,10 @@ class JsonConfig {
         return true;
       } else {
         Serial.println("configuration not valid, no update");
-        return false;     
-      }      
+        return false;
+      }
     }
-    
+
     bool loadString(String bytes) {
       StaticJsonDocument<EEPROM_SIZE> check_cfg;
       if (deserializeJson(check_cfg, bytes) != DeserializationError::Ok) {
@@ -40,14 +40,14 @@ class JsonConfig {
       }
       return loadJSON(check_cfg);
     }
-    
-#ifdef USE_EEPROM    
+
+#ifdef USE_EEPROM
     bool loadEEPROM() {
       char bytes[EEPROM_SIZE];
       EEPROM.get(0, bytes);
       return loadString(bytes);
     }
-    
+
     bool saveEEPROM() {
       char bytes[EEPROM_SIZE];
       if (serializeJson(val, bytes) == 0) { // returns number of bytes

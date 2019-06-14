@@ -34,18 +34,15 @@
 #include <NewPing.h>
 #include <MedianFilterLib.h>
 
-#define USE_DISPLAY // optional, use 4 digit TM1637 display for debugging, if not defined errors will still be displayed in Serial
-#include "Display4Digit.h"
-Display4Digit disp(CLK_PIN, DIO_PIN);
+#define USE_DISPLAY // optional, use 4 digit TM1637 display for debugging
+#include "display.h"
 
-#include "secrets.h"
-#include "WifiClientHTTPS.h"
-WiFiClientHTTPS wifi(WIFI_SSID, WIFI_PASSWORD, SERVER, &disp);
+#include "wifi.h"
 
 #define USE_EEPROM  // optional, to be able to update configuration without flashing new software
 #include "config.h"
 
-NewPing sonar(TRIGGER_PIN, ECHO_PIN);
+NewPing sonar(TRIGGER_PIN, ECHO_PIN, (int) cfg["MAX_DETECT_CM"]);
 MedianFilter<int> medianFilter(30);  // median filter window fixed to 30 measurements, easier than configurable
 
 float last_sent_mm = 100000.0;
@@ -56,11 +53,12 @@ bool measured = false, overflow_opened = false;
 void init_config(StaticJsonDocument<EEPROM_SIZE> &cfg) {
   cfg["DIST_SENSOR_BOTTOM_MM"] = 1660; // MUST BE CALIBRATED, DISTANCE THE SENSOR MEASURES WHEN STORAGE IS EMPTY
   cfg["TRIGGER_OVERFLOW_MM"] = 600;    // MUST BE SET BASED ON WATERBAG OR TANK MAX LEVEL
-  cfg["N_PINGS"] = 19;                 // each measurement is in fact series of N pings, result is the median
-  cfg["MIN_CHANGE_MM"] = 3;            // if change is greater or equal, send measurement to server every CYCLE_SEND_S
-  cfg["CYCLE_MEASURE_S"] = 4;          // delay between measurements in seconds
-  cfg["CYCLE_SEND_S"] = 30;            // period in seconds for sending measurement to server, if it is changing
-  cfg["FORCE_SEND_S"] = 600;           // period in seconds for sending measurement to server, even if it is not changing
+  cfg["MAX_DETECT_CM"] = 1000;
+  cfg["N_PINGS"] = 19;
+  cfg["MIN_CHANGE_MM"] = 3;  // my SR04 unit seems to be quite precise (when combined with median filter), send even small changes
+  cfg["CYCLE_MEASURE_S"] = 4;
+  cfg["CYCLE_SEND_S"] = 30;  // sending rather often to test when first connected, set higher later
+  cfg["FORCE_SEND_S"] = 600; // dtto
   cfg["WIFI_TIMEOUT_S"] = 30;
 }
 
@@ -79,6 +77,9 @@ void setup() {
   till_force_send_s = cfg["FORCE_SEND_S"];
 
   Serial.println();
+  #ifdef USE_DISPLAY
+    disp.setBrightness(8); // range 8-15
+  #endif
   
   #ifdef USE_EEPROM
     eeprom_init();
@@ -139,36 +140,38 @@ void measure() {
   /* try https://github.com/eliteio/Arduino_New_Ping it claims to use something more reliable than PulseIn
    * also there's ping_median(iterations) to get more robust result */
   digitalWrite(LED, HIGH);
-  int dist_mm = (343 * (int) sonar.ping_median((int) cfg["N_PINGS"])) / 2000;
+  int dist_mm = (343 * (int) sonar.ping_median((int) cfg["N_PINGS"], (int) cfg["MAX_DETECT_CM"])) / 2000;
   if (dist_mm > 0) {
     int height_mm = (int) cfg["DIST_SENSOR_BOTTOM_MM"] - dist_mm;
     Serial.printf("measurement: const %dmm - distance %dmm = height %dmm    ", (int) cfg["DIST_SENSOR_BOTTOM_MM"], dist_mm, height_mm);
     digitalWrite(LED, LOW);
     medianFilter.AddValue(height_mm);
     Serial.printf("median %4dmm\n", medianFilter.GetFiltered());
-    disp.showNumberDec(height_mm, false);
+    #ifdef USE_DISPLAY
+      disp.showNumberDec(height_mm, false);
+    #endif
     measured = true;
   } else {
-    disp.printDispErr("measurement failed: distance <= 0", 5);
+    print_disp_err("measurement failed: distance <= 0", 5);
   }
 }
 
 
 bool insert_height(int mm) {
   String ignored_response;
-  return wifi.get_url(INSERT_PATH + String(mm), ignored_response, true, (int) cfg["WIFI_TIMEOUT_S"]);
+  return get_url(INSERT_PATH + String(mm), ignored_response, true, (int) cfg["WIFI_TIMEOUT_S"]);
 }
 
 
 bool insert_log(String msg) {
   String ignored_response;
-  return wifi.get_url(LOG_PATH + msg, ignored_response, false, (int) cfg["WIFI_TIMEOUT_S"]);
+  return get_url(LOG_PATH + msg, ignored_response, false, (int) cfg["WIFI_TIMEOUT_S"]);
 }
 
 
 bool load_command() {
   String cmd;
-  if (!wifi.get_url(COMMAND_PATH, cmd, false, (int) cfg["WIFI_TIMEOUT_S"])) {
+  if (!get_url(COMMAND_PATH, cmd, false, (int) cfg["WIFI_TIMEOUT_S"])) {
     return false;
   }
   if (cmd.startsWith("{")) {

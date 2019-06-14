@@ -1,11 +1,7 @@
 /*
  * Display4Digit.h - wrapper around TM1637Display, assumes 4-digit 7-segment display, adds functions:
- * 
+ *
  * displaying functions are active when USE_DISPLAY is defined, otherwise only the print to Serial works
- * 
- * dispOK() to display "OH"
- * dispErr(int code) to display "ErNN" where NN is the code (0-99)
- * printDispErr(String msg, int code) shortcut to both print message to Serial and display the error code
  */
 
 #ifndef __PETRDOUBEK_DISPLAY_H__
@@ -30,6 +26,7 @@ class Display4Digit {
       #endif
     }
 
+    // display OK, spelled "OH"
     void dispOK() {
       #ifdef USE_DISPLAY
       uint8_t msg[4] = { _digit_O, _digit_H, 0, 0 };
@@ -37,6 +34,7 @@ class Display4Digit {
       #endif
     }
 
+    // display "ErNN" where NN is the code (0-99)
     void dispErr(int code) {
       #ifdef USE_DISPLAY
       uint8_t msg[4] = { _digit_E, _digit_r, 0, 0 };
@@ -46,6 +44,7 @@ class Display4Digit {
       #endif
     }
 
+    // shortcut to both print message to Serial and display the error code
     void printDispErr(String msg, int code) {
       Serial.println(msg);
       #ifdef USE_DISPLAY

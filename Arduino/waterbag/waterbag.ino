@@ -34,7 +34,7 @@
 #include <NewPing.h>
 #include <MedianFilterLib.h>
 
-//#define USE_DISPLAY // optional, use 4 digit TM1637 display for debugging
+#define USE_DISPLAY // optional, use 4 digit TM1637 display for debugging
 //#include "display.h"
 #include "Display4Digit.h"
 Display4Digit disp4(CLK_PIN, DIO_PIN);

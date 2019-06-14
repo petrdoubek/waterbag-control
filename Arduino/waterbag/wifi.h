@@ -66,7 +66,7 @@ bool get_url(String url, String &response, bool check_ok, int timeout) {
   if (response.startsWith("OK")) {
     WiFi.disconnect();
     #ifdef USE_DISPLAY
-      disp.setSegments(disp_OK);
+      disp4.dispOK();
       delay(3000);
     #endif
     return true;

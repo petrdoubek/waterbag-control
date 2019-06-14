@@ -24,7 +24,7 @@
 #define CLK_PIN          D4  // display - optional
 #define OVERFLOW_PIN     D5  // connected to relay that opens valve to release water somewhere
 #define IRRIGATION_PIN   D6  // currently not used
-#define LED_PIN          D7  // blink when measuring - optional
+#define LED              D7  // blink when measuring - optional
 
 // server resources, base URL of the server (like https://example.dom) is defined in secrets.h as SERVER
 #define INSERT_PATH   "/waterbag?insert_mm="
@@ -34,19 +34,15 @@
 #include <NewPing.h>
 #include <MedianFilterLib.h>
 
-//#define USE_DISPLAY // optional, use 4 digit TM1637 display for debugging, if not defined errors will still be displayed in Serial
-#include "Display4Digit.h"
-Display4Digit disp(CLK_PIN, DIO_PIN);
+#define USE_DISPLAY // optional, use 4 digit TM1637 display for debugging
+#include "display.h"
 
-#include "secrets.h"
-#include "WifiClientHTTPS.h"
-WiFiClientHTTPS wifi(WIFI_SSID, WIFI_PASSWORD, SERVER, &disp);
+#include "wifi.h"
 
-//#define USE_EEPROM  // optional, to be able to update configuration without flashing new software
-#include "JsonConfig.h"
-JsonConfig cfg;
+#define USE_EEPROM  // optional, to be able to update configuration without flashing new software
+#include "config.h"
 
-NewPing sonar(TRIGGER_PIN, ECHO_PIN);
+NewPing sonar(TRIGGER_PIN, ECHO_PIN, (int) cfg["MAX_DETECT_CM"]);
 MedianFilter<int> medianFilter(30);  // median filter window fixed to 30 measurements, easier than configurable
 
 float last_sent_mm = 100000.0;
@@ -54,68 +50,75 @@ int till_measure_s, till_send_s, till_force_send_s;
 bool measured = false, overflow_opened = false;
 
 
+void init_config(StaticJsonDocument<EEPROM_SIZE> &cfg) {
+  cfg["DIST_SENSOR_BOTTOM_MM"] = 1660; // MUST BE CALIBRATED, DISTANCE THE SENSOR MEASURES WHEN STORAGE IS EMPTY
+  cfg["TRIGGER_OVERFLOW_MM"] = 600;    // MUST BE SET BASED ON WATERBAG OR TANK MAX LEVEL
+  cfg["MAX_DETECT_CM"] = 1000;
+  cfg["N_PINGS"] = 19;
+  cfg["MIN_CHANGE_MM"] = 3;  // my SR04 unit seems to be quite precise (when combined with median filter), send even small changes
+  cfg["CYCLE_MEASURE_S"] = 4;
+  cfg["CYCLE_SEND_S"] = 30;  // sending rather often to test when first connected, set higher later
+  cfg["FORCE_SEND_S"] = 600; // dtto
+  cfg["WIFI_TIMEOUT_S"] = 30;
+}
+
+
 void setup() {
   Serial.begin(9600);
-
-  pinMode(LED_PIN, OUTPUT);
+  pinMode(LED, OUTPUT);
   pinMode(OVERFLOW_PIN, OUTPUT);
-  digitalWrite(LED_PIN, LOW);
+  digitalWrite(LED, LOW);
   digitalWrite(OVERFLOW_PIN, HIGH);  // the relay is activated by "grounded" pin, so HIGH means deactivated
 
-  cfg.val["DIST_SENSOR_BOTTOM_MM"] = 1660; // MUST BE CALIBRATED, DISTANCE THE SENSOR MEASURES WHEN STORAGE IS EMPTY
-  cfg.val["TRIGGER_OVERFLOW_MM"] = 600;    // MUST BE SET BASED ON WATERBAG OR TANK MAX LEVEL
-  cfg.val["N_PINGS"] = 19;                 // each measurement is in fact series of N pings, result is the median
-  cfg.val["MIN_CHANGE_MM"] = 3;            // if change is greater or equal, send measurement to server every CYCLE_SEND_S
-  cfg.val["CYCLE_MEASURE_S"] = 4;          // delay between measurements in seconds
-  cfg.val["CYCLE_SEND_S"] = 30;            // period in seconds for sending measurement to server, if it is changing
-  cfg.val["FORCE_SEND_S"] = 600;           // period in seconds for sending measurement to server, even if it is not changing
-  cfg.val["WIFI_TIMEOUT_S"] = 30;
+  init_config(cfg);
 
   till_measure_s = 1;
-  till_send_s = cfg.val["CYCLE_SEND_S"];
-  till_force_send_s = cfg.val["FORCE_SEND_S"];
+  till_send_s = cfg["CYCLE_SEND_S"];
+  till_force_send_s = cfg["FORCE_SEND_S"];
 
   Serial.println();
+  #ifdef USE_DISPLAY
+    disp.setBrightness(8); // range 8-15
+  #endif
   
   #ifdef USE_EEPROM
-  Serial.println("loading config from EEPROM...");
-  if (!cfg.loadEEPROM()) {
-    Serial.println("loading not successful, storing defaults");
-    cfg.saveEEPROM();
-  }
+    eeprom_init();
+    Serial.println("loading config ...");
+    read_config(cfg);
+    store_config(cfg);
   #endif
   Serial.print("using config: ");
-  cfg.printMe();
+  print_config(cfg);
 }
 
 
 void loop() {
   if (till_measure_s <= 0) {
     measure();
-    till_measure_s = cfg.val["CYCLE_MEASURE_S"];
+    till_measure_s = cfg["CYCLE_MEASURE_S"];
     
     // open or close the overflow valve if needed
     int filtered_height_mm = medianFilter.GetFiltered();
     
-    if (!overflow_opened && filtered_height_mm >= (int) cfg.val["TRIGGER_OVERFLOW_MM"]) {
+    if (!overflow_opened && filtered_height_mm >= (int) cfg["TRIGGER_OVERFLOW_MM"]) {
       digitalWrite(OVERFLOW_PIN, LOW);
       overflow_opened = true;
-      insert_log("overflow_opened:" + String(filtered_height_mm) + "ge" + String((int) cfg.val["TRIGGER_OVERFLOW_MM"]));
+      insert_log("overflow_opened:" + String(filtered_height_mm) + "ge" + String((int) cfg["TRIGGER_OVERFLOW_MM"]));
       
-    } else if (overflow_opened && filtered_height_mm < (int) cfg.val["TRIGGER_OVERFLOW_MM"]) {
+    } else if (overflow_opened && filtered_height_mm < (int) cfg["TRIGGER_OVERFLOW_MM"]) {
       digitalWrite(OVERFLOW_PIN, HIGH);
       overflow_opened = false;
-      insert_log("overflow_closed:" + String(filtered_height_mm) + "lt" + String((int) cfg.val["TRIGGER_OVERFLOW_MM"]));  
+      insert_log("overflow_closed:" + String(filtered_height_mm) + "lt" + String((int) cfg["TRIGGER_OVERFLOW_MM"]));  
     }
     
   }
   
   if (till_send_s <= 0 && measured) {
     int filtered_mm = medianFilter.GetFiltered();
-    if (till_force_send_s <= 0 || abs(last_sent_mm - filtered_mm) >= (int) cfg.val["MIN_CHANGE_MM"]) {
+    if (till_force_send_s <= 0 || abs(last_sent_mm - filtered_mm) >= (int) cfg["MIN_CHANGE_MM"]) {
       if (insert_height(round(filtered_mm))) {
         last_sent_mm = filtered_mm;
-        till_force_send_s = cfg.val["FORCE_SEND_S"];
+        till_force_send_s = cfg["FORCE_SEND_S"];
       } else {
         Serial.println("sending failed");
       }
@@ -123,58 +126,60 @@ void loop() {
     } else {
       Serial.println("sending skipped");
     }
-    till_send_s = cfg.val["CYCLE_SEND_S"];
+    till_send_s = cfg["CYCLE_SEND_S"];
   }
   int skip_s = min(till_measure_s, till_send_s);
   till_measure_s -= skip_s;
   till_send_s -= skip_s;
   till_force_send_s -= skip_s;
-  delay(1000*skip_s);*/
+  delay(1000*skip_s);
 }
 
 
 void measure() {
   /* try https://github.com/eliteio/Arduino_New_Ping it claims to use something more reliable than PulseIn
    * also there's ping_median(iterations) to get more robust result */
-  digitalWrite(LED_PIN, HIGH);
-  int dist_mm = (343 * (int) sonar.ping_median((int) cfg.val["N_PINGS"])) / 2000;
+  digitalWrite(LED, HIGH);
+  int dist_mm = (343 * (int) sonar.ping_median((int) cfg["N_PINGS"], (int) cfg["MAX_DETECT_CM"])) / 2000;
   if (dist_mm > 0) {
-    int height_mm = (int) cfg.val["DIST_SENSOR_BOTTOM_MM"] - dist_mm;
-    Serial.printf("measurement: const %dmm - distance %dmm = height %dmm    ", (int) cfg.val["DIST_SENSOR_BOTTOM_MM"], dist_mm, height_mm);
-    digitalWrite(LED_PIN, LOW);
+    int height_mm = (int) cfg["DIST_SENSOR_BOTTOM_MM"] - dist_mm;
+    Serial.printf("measurement: const %dmm - distance %dmm = height %dmm    ", (int) cfg["DIST_SENSOR_BOTTOM_MM"], dist_mm, height_mm);
+    digitalWrite(LED, LOW);
     medianFilter.AddValue(height_mm);
     Serial.printf("median %4dmm\n", medianFilter.GetFiltered());
-    disp.showNumberDec(height_mm, false);
+    #ifdef USE_DISPLAY
+      disp.showNumberDec(height_mm, false);
+    #endif
     measured = true;
   } else {
-    disp.printDispErr("measurement failed: distance <= 0", 5);
+    print_disp_err("measurement failed: distance <= 0", 5);
   }
 }
 
 
 bool insert_height(int mm) {
   String ignored_response;
-  return wifi.get_url(INSERT_PATH + String(mm), ignored_response, true, (int) cfg.val["WIFI_TIMEOUT_S"]);
+  return get_url(INSERT_PATH + String(mm), ignored_response, true, (int) cfg["WIFI_TIMEOUT_S"]);
 }
 
 
 bool insert_log(String msg) {
   String ignored_response;
-  return wifi.get_url(LOG_PATH + msg, ignored_response, false, (int) cfg.val["WIFI_TIMEOUT_S"]);
+  return get_url(LOG_PATH + msg, ignored_response, false, (int) cfg["WIFI_TIMEOUT_S"]);
 }
 
 
 bool load_command() {
   String cmd;
-  if (!wifi.get_url(COMMAND_PATH, cmd, false, (int) cfg.val["WIFI_TIMEOUT_S"])) {
+  if (!get_url(COMMAND_PATH, cmd, false, (int) cfg["WIFI_TIMEOUT_S"])) {
     return false;
   }
   if (cmd.startsWith("{")) {
-    cfg.loadString(cmd);
+    config_from_string(cmd);
     Serial.println("config read from server:");
-    cfg.printMe();
+    print_config(cfg);
     #ifdef USE_EEPROM
-      cfg.saveEEPROM();
+      store_config(cfg);
     #endif
   } else {
     Serial.println("UNKNOWN COMMAND: " + cmd);

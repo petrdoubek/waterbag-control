@@ -24,7 +24,7 @@
 #define CLK_PIN          D4  // display - optional
 #define OVERFLOW_PIN     D5  // connected to relay that opens valve to release water somewhere
 #define IRRIGATION_PIN   D6  // currently not used
-#define LED              D7  // blink when measuring - optional
+#define LED_PIN          D7  // blink when measuring - optional
 
 // server resources, base URL of the server (like https://example.dom) is defined in secrets.h as SERVER
 #define INSERT_PATH   "/waterbag?insert_mm="
@@ -42,7 +42,7 @@
 #define USE_EEPROM  // optional, to be able to update configuration without flashing new software
 #include "config.h"
 
-NewPing sonar(TRIGGER_PIN, ECHO_PIN, (int) cfg["MAX_DETECT_CM"]);
+NewPing sonar(TRIGGER_PIN, ECHO_PIN);
 MedianFilter<int> medianFilter(30);  // median filter window fixed to 30 measurements, easier than configurable
 
 float last_sent_mm = 100000.0;
@@ -65,9 +65,9 @@ void init_config(StaticJsonDocument<EEPROM_SIZE> &cfg) {
 
 void setup() {
   Serial.begin(9600);
-  pinMode(LED, OUTPUT);
+  pinMode(LED_PIN, OUTPUT);
   pinMode(OVERFLOW_PIN, OUTPUT);
-  digitalWrite(LED, LOW);
+  digitalWrite(LED_PIN, LOW);
   digitalWrite(OVERFLOW_PIN, HIGH);  // the relay is activated by "grounded" pin, so HIGH means deactivated
 
   init_config(cfg);
@@ -139,12 +139,12 @@ void loop() {
 void measure() {
   /* try https://github.com/eliteio/Arduino_New_Ping it claims to use something more reliable than PulseIn
    * also there's ping_median(iterations) to get more robust result */
-  digitalWrite(LED, HIGH);
+  digitalWrite(LED_PIN, HIGH);
   int dist_mm = (343 * (int) sonar.ping_median((int) cfg["N_PINGS"], (int) cfg["MAX_DETECT_CM"])) / 2000;
   if (dist_mm > 0) {
     int height_mm = (int) cfg["DIST_SENSOR_BOTTOM_MM"] - dist_mm;
     Serial.printf("measurement: const %dmm - distance %dmm = height %dmm    ", (int) cfg["DIST_SENSOR_BOTTOM_MM"], dist_mm, height_mm);
-    digitalWrite(LED, LOW);
+    digitalWrite(LED_PIN, LOW);
     medianFilter.AddValue(height_mm);
     Serial.printf("median %4dmm\n", medianFilter.GetFiltered());
     #ifdef USE_DISPLAY

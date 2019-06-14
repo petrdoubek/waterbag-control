@@ -43,6 +43,7 @@ Display4Digit disp4(CLK_PIN, DIO_PIN);
 
 #define USE_EEPROM  // optional, to be able to update configuration without flashing new software
 #include "config.h"
+#include "JsonConfig.h"
 
 NewPing sonar(TRIGGER_PIN, ECHO_PIN);
 MedianFilter<int> medianFilter(30);  // median filter window fixed to 30 measurements, easier than configurable
@@ -55,7 +56,6 @@ bool measured = false, overflow_opened = false;
 void init_config(StaticJsonDocument<EEPROM_SIZE> &cfg) {
   cfg["DIST_SENSOR_BOTTOM_MM"] = 1660; // MUST BE CALIBRATED, DISTANCE THE SENSOR MEASURES WHEN STORAGE IS EMPTY
   cfg["TRIGGER_OVERFLOW_MM"] = 600;    // MUST BE SET BASED ON WATERBAG OR TANK MAX LEVEL
-  cfg["MAX_DETECT_CM"] = 1000;
   cfg["N_PINGS"] = 19;
   cfg["MIN_CHANGE_MM"] = 3;  // my SR04 unit seems to be quite precise (when combined with median filter), send even small changes
   cfg["CYCLE_MEASURE_S"] = 4;
@@ -95,35 +95,41 @@ void loop() {
   if (till_measure_s <= 0) {
     measure();
     till_measure_s = cfg["CYCLE_MEASURE_S"];
-    
+
     // open or close the overflow valve if needed
-    int filtered_height_mm = medianFilter.GetFiltered();
-    
-    if (!overflow_opened && filtered_height_mm >= (int) cfg["TRIGGER_OVERFLOW_MM"]) {
-      digitalWrite(OVERFLOW_PIN, LOW);
-      overflow_opened = true;
-      insert_log("overflow_opened:" + String(filtered_height_mm) + "ge" + String((int) cfg["TRIGGER_OVERFLOW_MM"]));
+    if (measured) {
+      int filtered_height_mm = medianFilter.GetFiltered();
       
-    } else if (overflow_opened && filtered_height_mm < (int) cfg["TRIGGER_OVERFLOW_MM"]) {
-      digitalWrite(OVERFLOW_PIN, HIGH);
-      overflow_opened = false;
-      insert_log("overflow_closed:" + String(filtered_height_mm) + "lt" + String((int) cfg["TRIGGER_OVERFLOW_MM"]));  
+      if (!overflow_opened && filtered_height_mm >= (int) cfg["TRIGGER_OVERFLOW_MM"]) {
+        digitalWrite(OVERFLOW_PIN, LOW);
+        overflow_opened = true;
+        insert_log("overflow_opened:" + String(filtered_height_mm) + "ge" + String((int) cfg["TRIGGER_OVERFLOW_MM"]));
+        
+      } else if (overflow_opened && filtered_height_mm < (int) cfg["TRIGGER_OVERFLOW_MM"]) {
+        digitalWrite(OVERFLOW_PIN, HIGH);
+        overflow_opened = false;
+        insert_log("overflow_closed:" + String(filtered_height_mm) + "lt" + String((int) cfg["TRIGGER_OVERFLOW_MM"]));  
+      }
     }
     
   }
   
-  if (till_send_s <= 0 && measured) {
-    int filtered_mm = medianFilter.GetFiltered();
-    if (till_force_send_s <= 0 || abs(last_sent_mm - filtered_mm) >= (int) cfg["MIN_CHANGE_MM"]) {
-      if (insert_height(round(filtered_mm))) {
-        last_sent_mm = filtered_mm;
-        till_force_send_s = cfg["FORCE_SEND_S"];
+  if (till_send_s <= 0) {
+    if (measured) {
+      int filtered_mm = medianFilter.GetFiltered();
+      if (till_force_send_s <= 0 || abs(last_sent_mm - filtered_mm) >= (int) cfg["MIN_CHANGE_MM"]) {
+        if (insert_height(round(filtered_mm))) {
+          last_sent_mm = filtered_mm;
+          till_force_send_s = cfg["FORCE_SEND_S"];
+        } else {
+          Serial.println("sending failed");
+        }
+        load_command();  // check if server has any task (new config etc.)
       } else {
-        Serial.println("sending failed");
+        Serial.printf("sending skipped, change < %dmm\n", (int) cfg["MIN_CHANGE_MM"]);
       }
-      load_command();  // check if server has any task (new config etc.)
     } else {
-      Serial.println("sending skipped");
+      Serial.println("sending skipped, nothing measured so far");
     }
     till_send_s = cfg["CYCLE_SEND_S"];
   }

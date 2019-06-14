@@ -34,8 +34,10 @@
 #include <NewPing.h>
 #include <MedianFilterLib.h>
 
-#define USE_DISPLAY // optional, use 4 digit TM1637 display for debugging
-#include "display.h"
+//#define USE_DISPLAY // optional, use 4 digit TM1637 display for debugging
+//#include "display.h"
+#include "Display4Digit.h"
+Display4Digit disp4(CLK_PIN, DIO_PIN);
 
 #include "wifi.h"
 
@@ -77,9 +79,6 @@ void setup() {
   till_force_send_s = cfg["FORCE_SEND_S"];
 
   Serial.println();
-  #ifdef USE_DISPLAY
-    disp.setBrightness(8); // range 8-15
-  #endif
   
   #ifdef USE_EEPROM
     eeprom_init();
@@ -148,11 +147,11 @@ void measure() {
     medianFilter.AddValue(height_mm);
     Serial.printf("median %4dmm\n", medianFilter.GetFiltered());
     #ifdef USE_DISPLAY
-      disp.showNumberDec(height_mm, false);
+      disp4.showNumberDec(height_mm, false);
     #endif
     measured = true;
   } else {
-    print_disp_err("measurement failed: distance <= 0", 5);
+    disp4.printDispErr("measurement failed: distance <= 0", 5);
   }
 }
 

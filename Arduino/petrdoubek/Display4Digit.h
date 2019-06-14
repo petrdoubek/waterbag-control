@@ -8,8 +8,8 @@
  * printDispErr(String msg, int code) shortcut to both print message to Serial and display the error code
  */
 
-#ifndef PETRDOUBEK_DISPLAY_H
-#define PETRDOUBEK_DISPLAY_H
+#ifndef __PETRDOUBEK_DISPLAY_H__
+#define __PETRDOUBEK_DISPLAY_H__
 
 #ifdef USE_DISPLAY
 #include <TM1637Display.h>
@@ -24,13 +24,19 @@ class Display4Digit {
       #endif
     }
 
+    ~Display4Digit() {
+      #ifdef USE_DISPLAY
+      delete _disp;
+      #endif
+    }
+
     void dispOK() {
       #ifdef USE_DISPLAY
       uint8_t msg[4] = { _digit_O, _digit_H, 0, 0 };
       _disp->setSegments(msg);
       #endif
     }
-    
+
     void dispErr(int code) {
       #ifdef USE_DISPLAY
       uint8_t msg[4] = { _digit_E, _digit_r, 0, 0 };
@@ -39,7 +45,7 @@ class Display4Digit {
       _disp->setSegments(msg);
       #endif
     }
-  
+
     void printDispErr(String msg, int code) {
       Serial.println(msg);
       #ifdef USE_DISPLAY
@@ -56,8 +62,8 @@ class Display4Digit {
 
   private:
     #ifdef USE_DISPLAY
-    TM1637Display *_disp;  
-  
+    TM1637Display *_disp;
+
     // segments:
     //   -      A
     // |   |  F   B

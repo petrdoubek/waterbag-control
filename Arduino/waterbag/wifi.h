@@ -9,9 +9,7 @@ const char *ssid = WIFI_SSID, *password = WIFI_PASSWORD, *host = SERVER;
 
 void print_signal_strength() {
   Serial.print("signal strength (RSSI): " + String(WiFi.RSSI()) + " dBm\n");
-  #ifdef USE_DISPLAY
-    disp.showNumberDec(WiFi.RSSI(), false);
-  #endif
+  disp4.showNumberDec(WiFi.RSSI(), false);
 }
 
 
@@ -28,7 +26,7 @@ bool connect_wifi(int timeout) {
     }
     delay(1000);
   }
-  print_disp_err("WiFi.begin failed", 1);
+  disp4.printDispErr("WiFi.begin failed", 1);
   return false;
 }
 
@@ -40,7 +38,7 @@ bool get_url(String url, String &response, bool check_ok, int timeout) {
   Serial.println("WiFiClientSecure.connect to " + String(host));
 
   if (!client.connect(host, 443)) {
-    print_disp_err("WiFiClientSecure.connect failed", 3);
+    disp4.printDispErr("WiFiClientSecure.connect failed", 3);
     return false;
   }
 
@@ -73,7 +71,7 @@ bool get_url(String url, String &response, bool check_ok, int timeout) {
     #endif
     return true;
   } else {
-    print_disp_err("response not OK", 4);
+    disp4.printDispErr("response not OK", 4);
   }
 
   return false;

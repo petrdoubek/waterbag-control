@@ -24,7 +24,7 @@
 #define CLK_PIN          D4  // display - optional
 #define OVERFLOW_PIN     D5  // connected to relay that opens valve to release water somewhere
 #define IRRIGATION_PIN   D6  // currently not used
-#define LED              D7  // blink when measuring - optional
+#define LED_PIN          D7  // blink when measuring - optional
 
 // server resources, base URL of the server (like https://example.dom) is defined in secrets.h as SERVER
 #define INSERT_PATH   "/waterbag?insert_mm="
@@ -34,7 +34,7 @@
 #include <NewPing.h>
 #include <MedianFilterLib.h>
 
-#define USE_DISPLAY // optional, use 4 digit TM1637 display for debugging, if not defined errors will still be displayed in Serial
+//#define USE_DISPLAY // optional, use 4 digit TM1637 display for debugging, if not defined errors will still be displayed in Serial
 #include "Display4Digit.h"
 Display4Digit disp(CLK_PIN, DIO_PIN);
 
@@ -42,7 +42,7 @@ Display4Digit disp(CLK_PIN, DIO_PIN);
 #include "WifiClientHTTPS.h"
 WiFiClientHTTPS wifi(WIFI_SSID, WIFI_PASSWORD, SERVER, &disp);
 
-#define USE_EEPROM  // optional, to be able to update configuration without flashing new software
+//#define USE_EEPROM  // optional, to be able to update configuration without flashing new software
 #include "JsonConfig.h"
 JsonConfig cfg;
 
@@ -56,9 +56,10 @@ bool measured = false, overflow_opened = false;
 
 void setup() {
   Serial.begin(9600);
-  pinMode(LED, OUTPUT);
+
+  pinMode(LED_PIN, OUTPUT);
   pinMode(OVERFLOW_PIN, OUTPUT);
-  digitalWrite(LED, LOW);
+  digitalWrite(LED_PIN, LOW);
   digitalWrite(OVERFLOW_PIN, HIGH);  // the relay is activated by "grounded" pin, so HIGH means deactivated
 
   cfg.val["DIST_SENSOR_BOTTOM_MM"] = 1660; // MUST BE CALIBRATED, DISTANCE THE SENSOR MEASURES WHEN STORAGE IS EMPTY
@@ -128,19 +129,19 @@ void loop() {
   till_measure_s -= skip_s;
   till_send_s -= skip_s;
   till_force_send_s -= skip_s;
-  delay(1000*skip_s);
+  delay(1000*skip_s);*/
 }
 
 
 void measure() {
   /* try https://github.com/eliteio/Arduino_New_Ping it claims to use something more reliable than PulseIn
    * also there's ping_median(iterations) to get more robust result */
-  digitalWrite(LED, HIGH);
+  digitalWrite(LED_PIN, HIGH);
   int dist_mm = (343 * (int) sonar.ping_median((int) cfg.val["N_PINGS"])) / 2000;
   if (dist_mm > 0) {
     int height_mm = (int) cfg.val["DIST_SENSOR_BOTTOM_MM"] - dist_mm;
     Serial.printf("measurement: const %dmm - distance %dmm = height %dmm    ", (int) cfg.val["DIST_SENSOR_BOTTOM_MM"], dist_mm, height_mm);
-    digitalWrite(LED, LOW);
+    digitalWrite(LED_PIN, LOW);
     medianFilter.AddValue(height_mm);
     Serial.printf("median %4dmm\n", medianFilter.GetFiltered());
     disp.showNumberDec(height_mm, false);

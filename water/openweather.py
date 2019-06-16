@@ -19,7 +19,7 @@ def handle_get(cfg, url, params, wfile):
     if url.path.endswith('/html'):
         rsp += "<pre>\n" + read_forecast(db, time.time()) + "</pre>\n"
     if url.path.endswith('/update'):
-        insert_forecasts(cfg, db, get_forecast(cfg))
+        insert_forecasts(db, get_forecast(cfg))
         rsp += "UPDATE OK"
 
     if rsp == "":

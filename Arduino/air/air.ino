@@ -12,7 +12,7 @@ DHT dht(DHTPIN, DHTTYPE); // Initialize DHT sensor for normal 16mhz Arduino
 #define INSERT_PATH   "/air?insert_temperature="
 
 
-#define USE_EEPROM  // optional, to be able to update configuration without flashing new software
+//#define USE_EEPROM  // optional, to be able to update configuration without flashing new software
 #include "JsonConfig.h"
 JsonConfig jcfg;
 
@@ -36,10 +36,10 @@ bool measured = false;
 
 
 void init_config() {
-  jcfg.val["MIN_CHANGE_C"] = 0.5;
-  jcfg.val["CYCLE_MEASURE_S"] = 4;
-  jcfg.val["CYCLE_SEND_S"] = 30;
-  jcfg.val["FORCE_SEND_S"] = 600;
+  jcfg.val["MIN_CHANGE_C"] = 1.0;
+  jcfg.val["CYCLE_MEASURE_S"] = 60;
+  jcfg.val["CYCLE_SEND_S"] = 3600;
+  jcfg.val["FORCE_SEND_S"] = 4*3600;
   jcfg.val["WIFI_TIMEOUT_S"] = 30;
 }
 

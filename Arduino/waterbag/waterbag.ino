@@ -55,7 +55,7 @@ bool measured = false, overflow_opened = false;
 
 
 void init_config() {
-  jcfg.val["DIST_SENSOR_BOTTOM_MM"] = 1660; // MUST BE CALIBRATED, DISTANCE THE SENSOR MEASURES WHEN STORAGE IS EMPTY
+  jcfg.val["DIST_SENSOR_BOTTOM_MM"] = 1674; // MUST BE CALIBRATED, DISTANCE THE SENSOR MEASURES WHEN STORAGE IS EMPTY
   jcfg.val["TRIGGER_OVERFLOW_MM"] = 600;    // MUST BE SET BASED ON WATERBAG OR TANK MAX LEVEL
   jcfg.val["N_PINGS"] = 19;
   jcfg.val["MIN_CHANGE_MM"] = 3;  // my SR04 unit seems to be quite precise (when combined with median filter), send even small changes
@@ -87,9 +87,7 @@ void setup() {
   Serial.print("using config: ");
   jcfg.printMe();
 
-  till_measure_s = 1;
-  till_send_s = jcfg.val["CYCLE_SEND_S"];
-  till_force_send_s = jcfg.val["FORCE_SEND_S"];
+  reset_timers();
 }
 
 
@@ -143,6 +141,13 @@ void loop() {
 }
 
 
+void reset_timers() {
+  till_measure_s = 1;
+  till_send_s = jcfg.val["CYCLE_SEND_S"];
+  till_force_send_s = jcfg.val["FORCE_SEND_S"];
+}
+
+
 void measure() {
   /* try https://github.com/eliteio/Arduino_New_Ping it claims to use something more reliable than PulseIn
    * also there's ping_median(iterations) to get more robust result */
@@ -186,8 +191,9 @@ bool load_command() {
     Serial.print("config read from server: ");
     jcfg.printMe();
     #ifdef USE_EEPROM
-      jcfg.saveEEPROM();
+    jcfg.saveEEPROM();
     #endif
+    reset_timers();
   } else {
     Serial.println("UNKNOWN COMMAND: " + cmd);
   }

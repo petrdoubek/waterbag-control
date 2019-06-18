@@ -43,7 +43,7 @@ def insert_log(db, msg):
 
 
 def insert_command(db, cmd):
-    db.insert('command', 'time, cmd, popped', '%s, %s, %s', (time.time(), cmd, 'N'))
+    return db.insert('command', 'time, cmd, popped', '%s, %s, %s', (time.time(), cmd, 'N'))
 
 
 def read_height(db):
@@ -120,15 +120,17 @@ def volume_l(cfg, height_mm):
        oval is approximation for bag which gets rounder with increasing height
        :param cfg: """
     if cfg['volume_method'] == 'linear':
-        return height_mm * cfg['max_volume_l'] / cfg['max_height_mm']
+        return height_mm * float(cfg['max_volume_l']) / float(cfg['max_height_mm'])
     elif cfg['volume_method'] == 'oval':
-        return waterbag_cut_mm2(height_mm, cfg['flat_width_mm']) * cfg['max_volume_l'] / waterbag_cut_mm2(cfg['max_height_mm'], cfg['flat_width_mm'])
+        return waterbag_cut_mm2(height_mm, float(cfg['flat_width_mm']))\
+               * float(cfg['max_volume_l']) \
+               / waterbag_cut_mm2(float(cfg['max_height_mm']), float(cfg['flat_width_mm']))
     return -1
 
 
 def rain_l(cfg, rain_mm):
     """conversion from precipitation mm to liters of water harvested"""
-    return rain_mm * cfg['roof_area_m2']
+    return rain_mm * float(cfg['roof_area_m2'])
 
 
 def main():

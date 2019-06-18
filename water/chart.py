@@ -41,7 +41,7 @@ def html_chart(cfg, db):
             .replace('%STORED%', stored) \
             .replace('%OVERFLOW%', overflow) \
             .replace('%FORECASTED_RAIN%', forecasted_rain)\
-            .replace('%MAX_L%', '%d' % round(1.25*cfg['max_volume_l']))
+            .replace('%MAX_L%', '%d' % round(1.25 * float(cfg['max_volume_l'])))
 
 
 def get_data(cfg, db, tm_from, tm_now, tm_to):
@@ -110,11 +110,11 @@ def read_overflow(cfg, cursor, last_stored_ts, tm_from, tm_to):
     for (log_ts, msg) in cursor:
         if msg.startswith('overflow_opened'):  # going up
             overflow.append((log_ts, 0))
-            overflow.append((log_ts, cfg['max_volume_l'] / 6))
+            overflow.append((log_ts, float(cfg['max_volume_l'] / 6)))
         if msg.startswith('overflow_closed'):  # going down
             if len(overflow) > 0:
                 total_open_s += log_ts - overflow[-1][0]
-            overflow.append((log_ts, cfg['max_volume_l'] / 6))
+            overflow.append((log_ts, float(cfg['max_volume_l'] / 6)))
             overflow.append((log_ts, 0))
     if len(overflow) > 0:
         overflow.append((last_stored_ts, overflow[-1][1]))

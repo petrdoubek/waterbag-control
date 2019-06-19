@@ -13,16 +13,16 @@ The system has two parts:
 
 - [NodeMCU ESP8266 board](https://www.nodemcu.com/index_en.html) with integrated WiFi
 - SR04 ultrasound distance sensor, powered by 5V from the board (3.3V might not work)
-- relay to trigger valve or pump
+- [relay board](https://www.aliexpress.com/w/wholesale-2-channel-5V-relay.html) to trigger valve or pump - in my case [Orbit 1in Jar Top 24V valve](https://www.orbitonline.com/products/sprinkler-systems/valves/plastic-valves/automatic-jar-top/1-male-threaded-in-line-jar-top-sprinkler-control-valve-218)
 - USB adapter to power the board
-- power supply to power the valve or pump (if it is not the standard eletrical network voltage)
+- power supply to power the valve or pump (if it is not the standard electrical network voltage)
 - optional LED to indicate when the sensor measures
 - optional TM1637 display to show measurements and WiFi signal strength, useful at debugging stage
 
 ## Sensor Installation
 
 1. Install driver for ESP8266 (look for guide for your OS), install [Arduino IDE](https://www.arduino.cc/en/Main/Software), add your board (Tools->Board->Board Manager), connect the board via USB and test it (File->Examples).
-1. Copy directory `Arduino/waterbag` to your `Arduino` directory and header files direcory `Arduino/petrdoubek` to your `Arduino/libraries` (or copy the header files to directory `Arduino/waterbag` as well).
+1. Copy directory `Arduino/waterbag` to your `Arduino` directory and header files directory `Arduino/petrdoubek` to your `Arduino/libraries` (or copy the header files to directory `Arduino/waterbag` as well).
 1. Adjust parameters in `init_config()` for your needs, set `WIFI_SSID, WIFI_PASSWORD, SERVER` (to dummy values if you do not plan to use the server part).
 1. Compile, upload to the board, watch Tools->Serial Monitor, you should see that the board initialized with your configuration and fails to measure because of missing sensor.
 1. Connect the distance sensor and optionally LED and/or display to the defined pins, tune the measurement using `DIST_SENSOR_BOTTOM_MM` to get correct water height. If you already have server part running, you can change setup remotely without uploading and restarting.

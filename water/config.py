@@ -58,13 +58,13 @@ def update_config(cfg, db, params):
 
     if sensor_changed:
         cmd = json.dumps(sensor_config_new, separators=(',', ':'))
-        rsp += '<p>Inserting sensor config:</p><pre>%s</pre><p>The config will be read next time the sensor connects</p>' % cmd
+        rsp += '<p>Inserting sensor config:</p><pre>%s</pre><p>The config will be read next time the sensor connects.</p>' % cmd
         if insert_command(db, cmd):
             rsp += '<p>Insert OK</p>'
         else:
             rsp += '<p>Insert FAILED</p>'
     if server_changed:
-        rsp += '<p><b>server parameter(s) changed but they are not persisted in database</b></p>\n'
+        rsp += '<p><b>Server parameter(s) changed but they are not persisted in database.</b></p>\n'
 
     return HTML_START + rsp + '<p><a href="config">back to config</a></p>' + HTML_END
 

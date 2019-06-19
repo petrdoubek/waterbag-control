@@ -26,7 +26,7 @@ def handle_get(url, params, wfile):
     elif url.path.endswith('command'):
         rsp += pop_command(db)
     else:
-        rsp += "<pre>" + read_height(db) + "</pre>\n"
+        rsp += "<pre>" + read_height(db, 30) + "</pre>\n"
 
     if rsp == "":
         rsp = "UNKNOWN REQUEST"
@@ -46,12 +46,12 @@ def insert_command(db, cmd):
     return db.insert('command', 'time, cmd, popped', '%s, %s, %s', (time.time(), cmd, 'N'))
 
 
-def read_height(db):
-    """return list of heights in pre-tags"""
+def read_height(db, days):
+    """return list of heights in pre-tags, history for given number of days"""
     rsp = ""
     try:
         cursor = db.db.cursor()
-        query = ("SELECT time, mm FROM height ORDER BY time desc")
+        query = "SELECT time, mm FROM height WHERE time >= %d ORDER BY time desc" % (time.time() - days*24*3600)
         cursor.execute(query)
         last = -1
         repeated = 0
@@ -134,7 +134,7 @@ def rain_l(cfg, rain_mm):
 
 
 def main():
-    """if this module is run, connect to the database and print it out"""
+    """command line interface for testing without running the server"""
     import sys
     db = JawsDB()
 
@@ -168,7 +168,7 @@ def main():
             else:
                 print("please confirm deletion of table including all data: %s delete_height really_do" % sys.argv[0])
 
-    print(read_height(db))
+    print(read_height(db, 30))
 
 
 if __name__ == "__main__":

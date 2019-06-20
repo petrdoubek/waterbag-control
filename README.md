@@ -2,6 +2,8 @@
 
 Monitoring water level in rain water tank (in my case [bag or bladder by Citerneo](https://www.citerneo.eu/rainwater), could be also tank, cistern, barrel) and triggering valve or pump when a configured level is reached.
 
+![screenshot of water level chart](docs/images/screenshot-waterbag-control-server-chart.png?raw=true)
+
 Why do I need it? My waterbag is in basement below terrain level and overflow outlet is below terrain level. The bag would burst if I let the pressure build that high. The sewer drain is also not low enough to ensure recommended maximum height of the bag is not exceeded. So I automatically pump out water when the maximum height is reached and sewer drain serves only as a fallback.
 
 The system has two parts:
@@ -50,6 +52,8 @@ To display the forecasted precipitation, I am using [OpenWeatherMap 5day/3hour f
 ## Remote Control
 
 The configuration of sensor can be changed from server by inserting a new configuration into `command` table in the SQL database. The change is not immediate, the controller checks for new setup after it sends the measurement. This is cost optimization to save free hours on Heroku - if this is not a concern for you, configure shorter `FORCE_SEND_S` period. Server cannot push the configuration.
+
+Either use the `config` page on web server, or command line interface, e.g.:
 
 ```
 python water/waterbag.py insert_command '{"DIST_SENSOR_BOTTOM_MM":1674,"TRIGGER_OVERFLOW_MM":600,"MAX_DETECT_CM":300,"N_PINGS":9,"MIN_CHANGE_MM":3,"CYCLE_MEASURE_S":2,"CYCLE_SEND_S":60,"FORCE_SEND_S":7200,"WIFI_TIMEOUT_S":30}'

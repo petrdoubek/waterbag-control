@@ -30,7 +30,7 @@ The system has two parts:
 
 ## Server Installation
 
-To monitor and control the Arduino (via configuration changes), run the server part somewhere where your sensor can connect. I am using Heroku, the free plan is sufficient (1000hrs per month and 5MB Jaws MySQL database).
+To monitor and control the Arduino (via configuration changes), run the server part somewhere where your sensor can connect. I am using [Heroku](https://www.heroku.com/), the free plan is sufficient (1000hrs per month and 5MB [JawsDB MySQL database](https://elements.heroku.com/addons/jawsdb) as add-on).
 
 1. Define database access variables:
 
@@ -42,10 +42,10 @@ JAWSDB_URL
 JAWSDB_USER
 ```
 
-1. Run `python server.py`
-1. Main page is at `chart`, i.e. `https://yourdomain/chart`.
+1. Run `python server.py`, if using Heroku this is defined in `Procfile` and you test locally by `heroku local`
+1. Main page is at `chart`, e.g. `https://localhost:5000/chart` if testing locally.
 
-To display the forecasted precipitation, I am using [OpenWeatherMap 5day/3hour forecast API](https://openweathermap.org/forecast5). The service is free, you need to register to get an API key, which the server expects in `OPENWEATHER_APPID` variable. Forecast update is triggered by a GET call to `forecast/update` resource.
+To display the forecasted precipitation, I am using [OpenWeatherMap 5day/3hour forecast API](https://openweathermap.org/forecast5). The service is free, you need to register to get an API key, which the server expects in `OPENWEATHER_APPID` variable. Forecast update is triggered by a GET call to `forecast/update` resource, e.g. using `curl` call in [Heroku scheduler](https://elements.heroku.com/addons/scheduler) add-on.
 
 ## Remote Control
 

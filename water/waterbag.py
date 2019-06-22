@@ -26,7 +26,7 @@ def handle_get(url, params, wfile):
     elif url.path.endswith('command'):
         rsp += pop_command(db)
     else:
-        rsp += "<pre>" + read_height(db) + "</pre>\n"
+        rsp += "<pre>" + read_height(db, 30) + "</pre>\n"
 
     if rsp == "":
         rsp = "UNKNOWN REQUEST"
@@ -43,15 +43,15 @@ def insert_log(db, msg):
 
 
 def insert_command(db, cmd):
-    db.insert('command', 'time, cmd, popped', '%s, %s, %s', (time.time(), cmd, 'N'))
+    return db.insert('command', 'time, cmd, popped', '%s, %s, %s', (time.time(), cmd, 'N'))
 
 
-def read_height(db):
-    """return list of heights in pre-tags"""
+def read_height(db, days):
+    """return list of heights in pre-tags, history for given number of days"""
     rsp = ""
     try:
         cursor = db.db.cursor()
-        query = ("SELECT time, mm FROM height ORDER BY time desc")
+        query = "SELECT time, mm FROM height WHERE time >= %d ORDER BY time desc" % (time.time() - days*24*3600)
         cursor.execute(query)
         last = -1
         repeated = 0
@@ -120,19 +120,21 @@ def volume_l(cfg, height_mm):
        oval is approximation for bag which gets rounder with increasing height
        :param cfg: """
     if cfg['volume_method'] == 'linear':
-        return height_mm * cfg['max_volume_l'] / cfg['max_height_mm']
+        return height_mm * float(cfg['max_volume_l']) / float(cfg['max_height_mm'])
     elif cfg['volume_method'] == 'oval':
-        return waterbag_cut_mm2(height_mm, cfg['flat_width_mm']) * cfg['max_volume_l'] / waterbag_cut_mm2(cfg['max_height_mm'], cfg['flat_width_mm'])
+        return waterbag_cut_mm2(height_mm, float(cfg['flat_width_mm']))\
+               * float(cfg['max_volume_l']) \
+               / waterbag_cut_mm2(float(cfg['max_height_mm']), float(cfg['flat_width_mm']))
     return -1
 
 
 def rain_l(cfg, rain_mm):
     """conversion from precipitation mm to liters of water harvested"""
-    return rain_mm * cfg['roof_area_m2']
+    return rain_mm * float(cfg['roof_area_m2'])
 
 
 def main():
-    """if this module is run, connect to the database and print it out"""
+    """command line interface for testing without running the server"""
     import sys
     db = JawsDB()
 
@@ -166,7 +168,7 @@ def main():
             else:
                 print("please confirm deletion of table including all data: %s delete_height really_do" % sys.argv[0])
 
-    print(read_height(db))
+    print(read_height(db, 30))
 
 
 if __name__ == "__main__":

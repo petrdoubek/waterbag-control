@@ -14,7 +14,7 @@ def handle_get(url, params, wfile):
     if 'insert_humidity' in params:
         humidity_pct = int(params['insert_humidity'][0])
     if 'insert_moisture' in params:
-        moisture_res = int(params['insert_humidity'][0])
+        moisture_res = int(params['insert_moisture'][0])
     if 'offset_ms' in params:
         offset_ms = int(params['offset_ms'][0])
 

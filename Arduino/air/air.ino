@@ -141,7 +141,11 @@ void measure() {
 
 bool insert_air(float temp, int hum, int mois) {
   String ignored_response;
-  return wific.get_url(INSERT_PATH + String(temp, 1) + "&insert_humidity=" + String(hum) + "&insert_moisture" + String(mois),
+  return wific.get_url(INSERT_PATH + String(temp, 1) + "&insert_humidity=" + String(hum)
+#ifdef SOIL_PIN
+                        + "&insert_moisture=" + String(mois)
+#endif
+                       ,
                        ignored_response, true, (int) jcfg.val["WIFI_TIMEOUT_S"]);
 }
 

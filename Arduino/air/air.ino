@@ -1,16 +1,17 @@
-/* 
- *  Measuring air temperature and humidity, sending over WiFi to a server
- */
+/*
+    Measuring air temperature and humidity, sending over WiFi to a server
+*/
 
 #include <DHT.h>;
 
-#define DHTPIN  D7     // what pin we're connected to
+#define DHT_PIN  D7     // what pin we're connected to
 #define DHTTYPE DHT22   // DHT 22  (AM2302)
-DHT dht(DHTPIN, DHTTYPE); // Initialize DHT sensor for normal 16mhz Arduino
+DHT dht(DHT_PIN, DHTTYPE); // Initialize DHT sensor for normal 16mhz Arduino
+
+#define SOIL_PIN A0     // soil moisture sensor (optional)
 
 // server resources, base URL of the server (like https://example.dom) is defined in secrets.h as SERVER
 #define INSERT_PATH   "/air?insert_temperature="
-
 
 //#define USE_EEPROM  // optional, to be able to update configuration without flashing new software
 #include "JsonConfig.h"
@@ -27,8 +28,10 @@ Display4Digit disp4(CLK_PIN, DIO_PIN);
 WiFiClientHTTPS wific(WIFI_SSID, WIFI_PASSWORD, SERVER, &disp4);
 
 #include <MedianFilterLib.h>
-MedianFilter<float> medianFilterTemp(30);  // median filter window fixed to 30 measurements, easier than configurable
-MedianFilter<int> medianFilterHum(30);
+#define WINDOW 30 // median filter window fixed to 30 measurements, easier than configurable
+MedianFilter<float> medianFilterTemp(WINDOW);
+MedianFilter<int> medianFilterHum(WINDOW);
+MedianFilter<int> medianFilterSoil(WINDOW);
 
 float last_sent_temp = 100000.0;
 int till_measure_s, till_send_s, till_force_send_s;
@@ -37,9 +40,9 @@ bool measured = false;
 
 void init_config() {
   jcfg.val["MIN_CHANGE_C"] = 1.0;
-  jcfg.val["CYCLE_MEASURE_S"] = 60;
-  jcfg.val["CYCLE_SEND_S"] = 3600;
-  jcfg.val["FORCE_SEND_S"] = 4*3600;
+  jcfg.val["CYCLE_MEASURE_S"] = 3;
+  jcfg.val["CYCLE_SEND_S"] = 60; //3600;
+  jcfg.val["FORCE_SEND_S"] = 4 * 3600;
   jcfg.val["WIFI_TIMEOUT_S"] = 30;
 }
 
@@ -51,14 +54,14 @@ void setup() {
   init_config();
 
   Serial.println();
-  
-  #ifdef USE_EEPROM
+
+#ifdef USE_EEPROM
   Serial.println("loading config ...");
   if (jcfg.loadEEPROM()) {
     Serial.println("loading failed, storing default to EEPROM");
     jcfg.saveEEPROM();
   }
-  #endif
+#endif
   Serial.print("using config: ");
   jcfg.printMe();
 
@@ -71,16 +74,17 @@ void setup() {
 void loop() {
   if (till_measure_s <= 0) {
     measure();
-    till_measure_s = jcfg.val["CYCLE_MEASURE_S"];    
+    till_measure_s = jcfg.val["CYCLE_MEASURE_S"];
   }
-  
+
   if (till_send_s <= 0) {
     if (measured) {
       float filtered_temp = medianFilterTemp.GetFiltered();
       float filtered_hum = medianFilterHum.GetFiltered();
-      if (till_force_send_s <= 0 
+      float filtered_mois = medianFilterSoil.GetFiltered();
+      if (till_force_send_s <= 0
           || abs(last_sent_temp - filtered_temp) >= (float) jcfg.val["MIN_CHANGE_C"]) {
-        if (insert_air(filtered_temp, filtered_hum)) {
+        if (insert_air(filtered_temp, filtered_hum, filtered_mois)) {
           last_sent_temp = filtered_temp;
           till_force_send_s = jcfg.val["FORCE_SEND_S"];
         } else {
@@ -99,23 +103,35 @@ void loop() {
   till_measure_s -= skip_s;
   till_send_s -= skip_s;
   till_force_send_s -= skip_s;
-  delay(1000*skip_s);
+  delay(1000 * skip_s);
 }
 
 
 void measure() {
   int hum_pct = (int) dht.readHumidity();
   float temp_C = dht.readTemperature();
+#ifdef SOIL_PIN
+  int soil_resistance = analogRead(SOIL_PIN);
+  medianFilterSoil.AddValue(soil_resistance);
+#endif
 
-//  if (temp_C >= -50 && temp_C <= 100 && hum_pct >= 0 && hum_pct <= 100) {
+  //if (temp_C >= -50.0 && temp_C <= 100.0 && hum_pct >= 0 && hum_pct <= 100) {
   if (true) {
-    Serial.printf("measurement: Humidity: %3d%%, Temp: %5.1fC\n    ", hum_pct, temp_C);
+    Serial.printf("measurement: Humidity: %3d%%, Temp: %5.1fC", hum_pct, temp_C);
+#ifdef SOIL_PIN
+    Serial.printf(", Soil resistance: %4d", soil_resistance);
+#endif
+    Serial.println();
     medianFilterTemp.AddValue(temp_C);
     medianFilterHum.AddValue(hum_pct);
-    Serial.printf("median %3d%% %5.1fC\n", medianFilterHum.GetFiltered(), medianFilterTemp.GetFiltered());
-    #ifdef USE_DISPLAY
-      disp4.showNumberDec((int) temp_C, false);
-    #endif
+    Serial.printf("  median %3d%% %5.1fC", medianFilterHum.GetFiltered(), medianFilterTemp.GetFiltered());
+#ifdef SOIL_PIN
+    Serial.printf(" %4d", medianFilterSoil.GetFiltered());
+#endif
+    Serial.println();
+#ifdef USE_DISPLAY
+    disp4.showNumberDec((int) temp_C, false);
+#endif
     measured = true;
   } else {
     disp4.printDispErr("measurement out of range", 5);
@@ -123,14 +139,14 @@ void measure() {
 }
 
 
-bool insert_air(float temp, int hum) {
+bool insert_air(float temp, int hum, int mois) {
   String ignored_response;
-  return wific.get_url(INSERT_PATH + String(temp, 1) + "&insert_humidity=" + String(hum),
+  return wific.get_url(INSERT_PATH + String(temp, 1) + "&insert_humidity=" + String(hum) + "&insert_moisture" + String(mois),
                        ignored_response, true, (int) jcfg.val["WIFI_TIMEOUT_S"]);
 }
 
 /*
-bool load_command() {
+  bool load_command() {
   String cmd;
   if (!wific.get_url(COMMAND_PATH, cmd, false, (int) jcfg.val["WIFI_TIMEOUT_S"])) {
     return false;
@@ -145,4 +161,4 @@ bool load_command() {
   } else {
     Serial.println("UNKNOWN COMMAND: " + cmd);
   }
-}*/
+  }*/

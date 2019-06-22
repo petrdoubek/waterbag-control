@@ -1,5 +1,5 @@
 /*
-    Measuring air temperature and humidity, sending over WiFi to a server
+    Measuring air temperature and humidity and soil moisture, sending over WiFi to a server
 */
 
 #include <DHT.h>;
@@ -11,7 +11,7 @@ DHT dht(DHT_PIN, DHTTYPE); // Initialize DHT sensor for normal 16mhz Arduino
 #define SOIL_PIN A0     // soil moisture sensor (optional)
 
 // server resources, base URL of the server (like https://example.dom) is defined in secrets.h as SERVER
-#define INSERT_PATH   "/air?insert_temperature="
+#define INSERT_PATH   "/environment?"
 
 //#define USE_EEPROM  // optional, to be able to update configuration without flashing new software
 #include "JsonConfig.h"
@@ -30,16 +30,17 @@ WiFiClientHTTPS wific(WIFI_SSID, WIFI_PASSWORD, SERVER, &disp4);
 #include <MedianFilterLib.h>
 #define WINDOW 30 // median filter window fixed to 30 measurements, easier than configurable
 MedianFilter<float> medianFilterTemp(WINDOW);
-MedianFilter<int> medianFilterHum(WINDOW);
-MedianFilter<int> medianFilterSoil(WINDOW);
+MedianFilter<int> medianFilterHumidity(WINDOW);
+MedianFilter<int> medianFilterMoisture(WINDOW);
 
-float last_sent_temp = 100000.0;
+float last_sent_temp = 100000.0, last_sent_moisture = 100000;
 int till_measure_s, till_send_s, till_force_send_s;
 bool measured = false;
 
 
 void init_config() {
   jcfg.val["MIN_CHANGE_C"] = 1.0;
+  jcfg.val["MIN_CHANGE_RES"] = 50;
   jcfg.val["CYCLE_MEASURE_S"] = 3;
   jcfg.val["CYCLE_SEND_S"] = 60; //3600;
   jcfg.val["FORCE_SEND_S"] = 4 * 3600;
@@ -80,12 +81,14 @@ void loop() {
   if (till_send_s <= 0) {
     if (measured) {
       float filtered_temp = medianFilterTemp.GetFiltered();
-      float filtered_hum = medianFilterHum.GetFiltered();
-      float filtered_mois = medianFilterSoil.GetFiltered();
+      float filtered_humidity = medianFilterHumidity.GetFiltered();
+      float filtered_moisture = medianFilterMoisture.GetFiltered();
       if (till_force_send_s <= 0
-          || abs(last_sent_temp - filtered_temp) >= (float) jcfg.val["MIN_CHANGE_C"]) {
-        if (insert_air(filtered_temp, filtered_hum, filtered_mois)) {
+          || abs(last_sent_temp - filtered_temp) >= (float) jcfg.val["MIN_CHANGE_C"]
+          || abs(last_sent_moisture - filtered_moisture) >= (int) jcfg.val["MIN_CHANGE_RES"]) {
+        if (insert_environment(filtered_temp, filtered_humidity, filtered_moisture)) {
           last_sent_temp = filtered_temp;
+          last_sent_moisture = filtered_moisture;
           till_force_send_s = jcfg.val["FORCE_SEND_S"];
         } else {
           Serial.println("sending failed");
@@ -112,7 +115,7 @@ void measure() {
   float temp_C = dht.readTemperature();
 #ifdef SOIL_PIN
   int soil_resistance = analogRead(SOIL_PIN);
-  medianFilterSoil.AddValue(soil_resistance);
+  medianFilterMoisture.AddValue(soil_resistance);
 #endif
 
   //if (temp_C >= -50.0 && temp_C <= 100.0 && hum_pct >= 0 && hum_pct <= 100) {
@@ -123,10 +126,10 @@ void measure() {
 #endif
     Serial.println();
     medianFilterTemp.AddValue(temp_C);
-    medianFilterHum.AddValue(hum_pct);
-    Serial.printf("  median %3d%% %5.1fC", medianFilterHum.GetFiltered(), medianFilterTemp.GetFiltered());
+    medianFilterHumidity.AddValue(hum_pct);
+    Serial.printf("  median %3d%% %5.1fC", medianFilterHumidity.GetFiltered(), medianFilterTemp.GetFiltered());
 #ifdef SOIL_PIN
-    Serial.printf(" %4d", medianFilterSoil.GetFiltered());
+    Serial.printf(" %4d", medianFilterMoisture.GetFiltered());
 #endif
     Serial.println();
 #ifdef USE_DISPLAY
@@ -139,11 +142,13 @@ void measure() {
 }
 
 
-bool insert_air(float temp, int hum, int mois) {
+bool insert_environment(float temp, int hum, int mois) {
   String ignored_response;
-  return wific.get_url(INSERT_PATH + String(temp, 1) + "&insert_humidity=" + String(hum)
+  return wific.get_url(String(INSERT_PATH)
+                       + "insert_temperature=" + String(temp, 1)
+                       + "&insert_humidity=" + String(hum)
 #ifdef SOIL_PIN
-                        + "&insert_moisture=" + String(mois)
+                       + "&insert_moisture=" + String(mois)
 #endif
                        ,
                        ignored_response, true, (int) jcfg.val["WIFI_TIMEOUT_S"]);

@@ -92,7 +92,7 @@ def main():
     if len(sys.argv) > 1:
         if sys.argv[1] == 'insert':
             insert_forecasts(db, [(time.time(), sys.argv[2] if len(sys.argv) >= 3 else 1.23)])
-        if sys.argv[1] == 'create':
+        if sys.argv[1] == 'create_tables':
             db.create("CREATE TABLE forecast ("
                       " valid_from     INT UNSIGNED NOT NULL,"
                       " valid_to       INT UNSIGNED NOT NULL,"

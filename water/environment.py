@@ -126,7 +126,7 @@ def main():
     if len(sys.argv) > 1:
         if sys.argv[1] == 'insert_environment':
             insert_environment(db, 0, int(sys.argv[2]) if len(sys.argv) >= 3 else 22, int(sys.argv[3]) if len(sys.argv) >= 4 else 55)
-        if sys.argv[1] == 'create_environment':
+        if sys.argv[1] == 'create_tables':
             db.create("CREATE TABLE temperature "
                       "(time_ms INT UNSIGNED NOT NULL, temperature_c FLOAT NOT NULL, "
                       "PRIMARY KEY (time_ms));")

@@ -44,6 +44,14 @@ JAWSDB_URL
 JAWSDB_USER
 ```
 
+1. Create the tables using command line:
+
+```
+python water/waterbag.py create_tables
+python water/openweather.py create_tables
+python water/environment.py create_tables
+```
+
 1. Run `python server.py`, if using Heroku this is defined in `Procfile` and you test locally by `heroku local`
 1. Main page is at `chart`, e.g. `https://localhost:5000/chart` if testing locally.
 

@@ -153,13 +153,9 @@ def main():
         if sys.argv[1] == 'insert_command':
             insert_command(db, sys.argv[2] if len(sys.argv) >= 3 else "testing command")
             return
-        if sys.argv[1] == 'create_height':
+        if sys.argv[1] == 'create_tables':
             db.create("CREATE TABLE height (time INT UNSIGNED NOT NULL, mm INT, PRIMARY KEY (time));")
-            return
-        if sys.argv[1] == 'create_log':
             db.create("CREATE TABLE log (time INT UNSIGNED NOT NULL, msg VARCHAR(1024));")
-            return
-        if sys.argv[1] == 'create_command':
             db.create("CREATE TABLE command (time INT UNSIGNED NOT NULL, cmd VARCHAR(1024), popped ENUM('Y','N'));")
             return
         if sys.argv[1] == 'delete_height':

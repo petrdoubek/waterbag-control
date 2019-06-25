@@ -77,3 +77,8 @@ class JawsDB:
 
 def strtime(tm):
     return time.strftime("%x %X", time.localtime(tm))
+
+
+def timeseries_csv(stored):
+    stored_string = '[' + ','.join(["{t:%d,y:%d}" % (1000 * sec, l) for (sec, l) in stored]) + ']'
+    return stored_string

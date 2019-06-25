@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html><head>
 	<meta http-equiv="content-type" content="text/html; charset=UTF-8">
-	<title>Waterbag: %STATE%</title>
+	<title>Environment Chart</title>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.24.0/moment.min.js"></script>
 	<script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0/dist/Chart.min.js"></script>
 	<style>
@@ -14,19 +14,15 @@
 </style></head>
 
 <body style="font-family:arial;">
-	<h1>Waterbag: %STATE%</h1>
-	<p> <a href="chart?hours=8">8 hours</a> |
-		<a href="chart?days=1">1 day</a> |
-		<a href="chart?days=3">3 days</a> |
-		<a href="chart?days=7">week</a> |
-		<a href="chart?days=14">2 weeks</a> |
-		<a href="chart?days=30">month</a>
-		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;numbers:
-		<a href="waterbag">height table</a> |
-		<a href="forecast/html">forecast table</a> |
-		<a href="waterbag/log">log</a>
+	<h1>Environment: %STATE%</h1>
+	<p> <a href="environment?hours=8">8 hours</a> |
+		<a href="environment?days=1">1 day</a> |
+		<a href="environment?days=3">3 days</a> |
+		<a href="environment?days=7">week</a> |
+		<a href="environment?days=14">2 weeks</a> |
+		<a href="environment?days=30">month</a>
 		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-		<a href="environment">environment</a>
+		<a href="chart">waterbag</a>
 	</p>
 	<div style="width:100%">
 		<div class="chartjs-size-monitor">
@@ -43,7 +39,8 @@
 		  green: 'rgb(75, 255, 75)', greenFill: 'rgba(75, 255, 75, 0.3)',
 		  blue: 'rgb(54, 162, 235)', blueFill: 'rgba(54, 162, 235, 0.3)',
 		  purple: 'rgb(153, 102, 255)',
-		  grey: 'rgb(201, 203, 207)'
+		  grey: 'rgb(201, 203, 207)',
+		  transparent: 'rgba(0, 0, 0, 0)'
 		};
 
 		var w = window,
@@ -63,28 +60,34 @@
 			data: {
 				datasets: [
 				  	{
-						label: 'Stored [l]',
-						backgroundColor: window.chartColors.blueFill,
-						borderColor: window.chartColors.blue,
-						data: %STORED%,
+						label: 'Temperature [C]',
+						borderColor: window.chartColors.red,
+						data: %TEMPERATURE%,
 						type: 'line',
-						lineTension: 0
+						fill: false,
+						backgroundColor: window.chartColors.transparent,
+						lineTension: 0,
+						yAxisID: 'y-axis-C'
 					},
           			{
-						label: 'Forecast [l]',
-						backgroundColor: window.chartColors.greenFill,
-						borderColor: window.chartColors.green,
-						data: %FORECASTED_RAIN%,
+						label: 'Humidity [%]',
+						borderColor: window.chartColors.blue,
+						data: %HUMIDITY%,
 						type: 'line',
-						lineTension: 0
+						fill: false,
+						backgroundColor: window.chartColors.transparent,
+						lineTension: 0,
+						yAxisID: 'y-axis-pct'
 				  	},
 					{
-						label: 'Overflow sprinkler opened',
-						backgroundColor: window.chartColors.redFill,
-						borderColor: window.chartColors.red,
-						data: %OVERFLOW%,
+						label: 'Moisture [%]',
+						borderColor: window.chartColors.green,
+						data: %MOISTURE%,
 						type: 'line',
-						lineTension: 0
+						fill: false,
+						backgroundColor: window.chartColors.transparent,
+						lineTension: 0,
+						yAxisID: 'y-axis-pct'
 					}
         		]
 			},
@@ -101,12 +104,24 @@
 						},
 						ticks: { autoSkip: true, maxRotation: 70 }
 					}],
-					yAxes: [{
-						scaleLabel: {
-							labelString: 'liters'
+					yAxes: [
+						{
+							id: 'y-axis-C',
+							position: 'left',
+							scaleLabel: {
+								labelString: 'C'
+							},
+							ticks: { suggestedMin: 5, suggestedMax: 35 }
 						},
-						ticks: { beginAtZero: true, min: 0, max: %MAX_L% }
-					}]
+						{
+							id: 'y-axis-pct',
+							position: 'right',
+							scaleLabel: {
+								labelString: '%'
+							},
+							ticks: { min: 0, max: 100 }
+						}
+					]
 				},
 				tooltips: {
 					intersect: false,

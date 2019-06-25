@@ -8,7 +8,8 @@
 #define DHTTYPE DHT22   // DHT 22  (AM2302)
 DHT dht(DHT_PIN, DHTTYPE); // Initialize DHT sensor for normal 16mhz Arduino
 
-#define SOIL_PIN A0     // soil moisture sensor (optional)
+#define SOIL_MEASURE_PIN A0     // soil moisture sensor (optional)
+#define SOIL_VIN_PIN     D6     // soil voltage pin - turn it on only for measurement
 
 // server resources, base URL of the server (like https://example.dom) is defined in secrets.h as SERVER
 #define INSERT_PATH   "/environment?"
@@ -28,7 +29,7 @@ Display4Digit disp4(CLK_PIN, DIO_PIN);
 WiFiClientHTTPS wific(WIFI_SSID, WIFI_PASSWORD, SERVER, &disp4);
 
 #include <MedianFilterLib.h>
-#define WINDOW 30 // median filter window fixed to 30 measurements, easier than configurable
+#define WINDOW 25 // median filter window fixed, easier than configurable
 MedianFilter<float> medianFilterTemp(WINDOW);
 MedianFilter<int> medianFilterHumidity(WINDOW);
 MedianFilter<int> medianFilterMoisture(WINDOW);
@@ -41,8 +42,8 @@ bool measured = false;
 void init_config() {
   jcfg.val["MIN_CHANGE_C"] = 1.0;
   jcfg.val["MIN_CHANGE_RES"] = 50;
-  jcfg.val["CYCLE_MEASURE_S"] = 3;
-  jcfg.val["CYCLE_SEND_S"] = 60; //3600;
+  jcfg.val["CYCLE_MEASURE_S"] = 240;
+  jcfg.val["CYCLE_SEND_S"] = 3600;
   jcfg.val["FORCE_SEND_S"] = 4 * 3600;
   jcfg.val["WIFI_TIMEOUT_S"] = 30;
 }
@@ -51,6 +52,8 @@ void init_config() {
 void setup() {
   Serial.begin(9600);
   dht.begin();
+  pinMode(SOIL_VIN_PIN, OUTPUT);
+  soilSensorSwitch(LOW);
 
   init_config();
 
@@ -113,22 +116,25 @@ void loop() {
 void measure() {
   int hum_pct = (int) dht.readHumidity();
   float temp_C = dht.readTemperature();
-#ifdef SOIL_PIN
-  int soil_resistance = analogRead(SOIL_PIN);
+#ifdef SOIL_MEASURE_PIN
+  soilSensorSwitch(HIGH);
+  delay(500);  // send current to the sensor only for a short time
+  int soil_resistance = analogRead(SOIL_MEASURE_PIN);
+  soilSensorSwitch(LOW);
   medianFilterMoisture.AddValue(soil_resistance);
 #endif
 
   //if (temp_C >= -50.0 && temp_C <= 100.0 && hum_pct >= 0 && hum_pct <= 100) {
   if (true) {
     Serial.printf("measurement: Humidity: %3d%%, Temp: %5.1fC", hum_pct, temp_C);
-#ifdef SOIL_PIN
+#ifdef SOIL_MEASURE_PIN
     Serial.printf(", Soil resistance: %4d", soil_resistance);
 #endif
     Serial.println();
     medianFilterTemp.AddValue(temp_C);
     medianFilterHumidity.AddValue(hum_pct);
     Serial.printf("  median %3d%% %5.1fC", medianFilterHumidity.GetFiltered(), medianFilterTemp.GetFiltered());
-#ifdef SOIL_PIN
+#ifdef SOIL_MEASURE_PIN
     Serial.printf(" %4d", medianFilterMoisture.GetFiltered());
 #endif
     Serial.println();
@@ -142,12 +148,19 @@ void measure() {
 }
 
 
+void soilSensorSwitch(int value) {
+#ifdef SOIL_VIN_PIN
+  digitalWrite(SOIL_VIN_PIN, value);
+#endif
+}
+
+
 bool insert_environment(float temp, int hum, int mois) {
   String ignored_response;
   return wific.get_url(String(INSERT_PATH)
                        + "insert_temperature=" + String(temp, 1)
                        + "&insert_humidity=" + String(hum)
-#ifdef SOIL_PIN
+#ifdef SOIL_MEASURE_PIN
                        + "&insert_moisture=" + String(mois)
 #endif
                        ,

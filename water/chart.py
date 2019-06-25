@@ -2,7 +2,7 @@ import logging
 import mysql.connector
 import time
 
-from .jawsdb import JawsDB
+from .jawsdb import JawsDB, timeseries_csv
 from .waterbag import volume_l, rain_l
 
 CHART_TEMPLATE = 'chart.html'
@@ -119,8 +119,3 @@ def read_overflow(cfg, cursor, last_stored_ts, tm_from, tm_to):
     if len(overflow) > 0:
         overflow.append((last_stored_ts, overflow[-1][1]))
     return overflow, total_open_s
-
-
-def timeseries_csv(stored):
-    stored_string = '[' + ','.join(["{t:%d,y:%d}" % (1000 * sec, l) for (sec, l) in stored]) + ']'
-    return stored_string

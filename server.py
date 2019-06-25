@@ -36,7 +36,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             water.waterbag.handle_get(parsed_url, parsed_params, self.wfile)
         elif parsed_url.path.startswith('/forecast'):
             water.openweather.handle_get(CFG, parsed_url, parsed_params, self.wfile)
-        elif parsed_url.path.startswith('/chart'):
+        elif parsed_url.path.startswith('/chart') or parsed_url.path == '/':
             water.chart.handle_get(CFG, parsed_url, parsed_params, self.wfile)
         elif parsed_url.path.startswith('/config'):
             water.config.handle_get(CFG, parsed_url, parsed_params, self.wfile)

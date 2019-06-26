@@ -74,7 +74,8 @@
 						borderColor: window.chartColors.blue,
 						data: %HUMIDITY%,
 						type: 'line',
-						fill: false,
+            borderDash: [10, 15],
+            fill: false,
 						backgroundColor: window.chartColors.transparent,
 						lineTension: 0,
 						yAxisID: 'y-axis-pct'
@@ -84,8 +85,7 @@
 						borderColor: window.chartColors.green,
 						data: %MOISTURE%,
 						type: 'line',
-						fill: false,
-						backgroundColor: window.chartColors.transparent,
+						backgroundColor: window.chartColors.greenFill,
 						lineTension: 0,
 						yAxisID: 'y-axis-pct'
 					}
@@ -109,16 +109,15 @@
 							id: 'y-axis-C',
 							position: 'left',
 							scaleLabel: {
-								labelString: 'C'
+								labelString: 'degrees Celsius',
+                				display: true
 							},
 							ticks: { suggestedMin: 5, suggestedMax: 35 }
 						},
 						{
 							id: 'y-axis-pct',
+              				display: false,
 							position: 'right',
-							scaleLabel: {
-								labelString: '%'
-							},
 							ticks: { min: 0, max: 100 }
 						}
 					]

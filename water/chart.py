@@ -37,11 +37,12 @@ def html_chart(cfg, db):
         get_data(cfg, db, tm_now - INTERVAL_PAST_S, tm_now, tm_now + INTERVAL_FUTURE_S)
     with open(CHART_TEMPLATE, 'r') as template_file:
         return template_file.read()\
-            .replace('%STATE%', '%dl, %s, total %ds' % (now_l, ('overflow open %ds' % overflow_s) if overflow_s>=0 else 'overflow closed', total_open_s))\
+            .replace('%STATE%', '%dl %s' % (now_l, ('OPENED %ds' % overflow_s) if overflow_s>=0 else ''))\
             .replace('%STORED%', stored) \
             .replace('%OVERFLOW%', overflow) \
             .replace('%FORECASTED_RAIN%', forecasted_rain)\
-            .replace('%MAX_L%', '%d' % round(1.25 * float(cfg['max_volume_l'])))
+            .replace('%MAX_L%', '%d' % round(1.25 * float(cfg['max_volume_l'])))\
+            .replace('%TOTAL_OVERFLOW_S%', '%d' % total_open_s)
 
 
 def get_data(cfg, db, tm_from, tm_now, tm_to):

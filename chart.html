@@ -35,6 +35,7 @@
 		</div>
 		<canvas id="chart1" style="display: block;" class="chartjs-render-monitor"></canvas>
 	</div>
+	<p>Total overflow time %TOTAL_OVERFLOW_S%s.</p>
 	<script>
 		window.chartColors = {
 		  red: 'rgb(255, 99, 132)', redFill: 'rgb(255, 99, 132, 0.3)',
@@ -103,7 +104,8 @@
 					}],
 					yAxes: [{
 						scaleLabel: {
-							labelString: 'liters'
+							labelString: 'liters',
+							display: true
 						},
 						ticks: { beginAtZero: true, min: 0, max: %MAX_L% }
 					}]

@@ -21,6 +21,10 @@ The system has two parts:
 - optional LED to indicate when the sensor measures
 - optional TM1637 display to show measurements and WiFi signal strength, useful at debugging stage
 
+The following schema shows the necessary components (LED and display not included):
+
+![breadboard schema](docs/images/fritzing-waterbag-bb.png)
+
 ## Sensor Installation
 
 1. Install driver for ESP8266 (look for guide for your OS), install [Arduino IDE](https://www.arduino.cc/en/Main/Software), add your board (Tools->Board->Board Manager), connect the board via USB and test it (File->Examples).

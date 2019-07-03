@@ -1,5 +1,7 @@
 /* 
  *  Home Rain Water Storage Monitoring and Control
+ *
+ * https://github.com/petrdoubek/waterbag-control
  *  
  *  Arduino-like NodeMCU ESP8266 unit measures water level using ultrasound sensor (SR04).
  *  It opens valve when a configured level is achieved (can as well be pump instead of valve).

@@ -9,7 +9,7 @@ CONFIG = dict(
     max_height_mm = 600,    # maximum allowed waterbag height (or water level in water tank)
     max_volume_l = 3000,    # volume at max_height_mm
     flat_width_mm = 2000,   # width of flat waterbag, used for 'oval' volume approximation
-    roof_area_m2 = 55,      # area from which rain water is collected, used in connection with precipitation forecast
+    roof_area_m2 = 100,      # area from which rain water is collected, used in connection with precipitation forecast
     volume_method = 'oval', # approximation method
     city = 'pardubice,cz'
 )

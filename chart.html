@@ -4,6 +4,8 @@
 	<title>Waterbag: %STATE%</title>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.24.0/moment.min.js"></script>
 	<script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0/dist/Chart.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@0.7.3"></script>
 	<style>
 		canvas {
 			-moz-user-select: none;
@@ -125,7 +127,21 @@
 							return label;
 						}
 					}
-				}
+				},
+        plugins: {
+          zoom: {
+            pan: {
+              enabled: true,
+              mode: 'x',
+            },
+            zoom: {
+              enabled: true,
+              drag: false,
+              mode: 'x',
+              speed: 0.03,
+            }
+          }
+        }
 			}
 		};
 

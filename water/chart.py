@@ -57,11 +57,14 @@ def get_data(cfg, db, tm_from, tm_now, tm_to):
         cursor = db.db.cursor()
 
         stored = read_stored(cfg, cursor, tm_from, tm_to)
-        last_stored_ts, last_stored_l = stored[-1]
 
-        forecast = read_forecast(cfg, cursor, last_stored_ts, last_stored_l, tm_now, tm_to)
-
-        overflow, total_open_s = read_overflow(cfg, cursor, last_stored_ts, tm_from, tm_to)
+        if stored is None or len(stored) < 1:
+            stored, forecast, overflow = [{tm_now-INTERVAL_PAST_S,0}, {tm_now,0}], [], []
+            last_stored_l, total_open_s = 0, 0
+        else:
+            last_stored_ts, last_stored_l = stored[-1]
+            forecast = read_forecast(cfg, cursor, last_stored_ts, last_stored_l, tm_now, tm_to)
+            overflow, total_open_s = read_overflow(cfg, cursor, last_stored_ts, tm_from, tm_to)
 
         cursor.close()
         return (timeseries_csv(stored), timeseries_csv(forecast), timeseries_csv(overflow),

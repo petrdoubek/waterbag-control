@@ -31,7 +31,7 @@ Display4Digit disp4(CLK_PIN, DIO_PIN);
 WiFiClientHTTPS wific(WIFI_SSID, WIFI_PASSWORD, SERVER, &disp4);
 
 #include <MedianFilterLib.h>
-#define WINDOW 9 // median filter window fixed, easier than configurable
+#define WINDOW 9 // median filter window size is fixed, easier than configurable
 MedianFilter<float> OutsideTemperature(WINDOW);
 MedianFilter<int> OutsideHumidity(WINDOW);
 MedianFilter<float> InsideTemperature(WINDOW);
@@ -73,8 +73,9 @@ void setup() {
 
 void loop() {
   for (int i=0; i<WINDOW; i++) {
-    Serial.printf("#%03d ", i);
+    Serial.printf("#%03d Out: ", i);
     measure_dht(OutsideDHT, OutsideTemperature, OutsideHumidity, valid_temp_out, valid_hum_out);
+    Serial.printf("   In: ");
     measure_dht(InsideDHT, InsideTemperature, InsideHumidity, valid_temp_in, valid_hum_in);
     Serial.println();
     delay(2000); // DHT22 requires 2s interval between measurements

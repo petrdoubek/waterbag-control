@@ -115,6 +115,7 @@ void measure_dht(DHT dht,
   }
 
   Serial.printf("    Dew point: %5.1fC", dew_point(temp_C, (float) hum_pct / 100.0));
+  Serial.printf("    Abs humidity: %5.1fg/m3", abs_humidity(temp_C, (float) hum_pct / 100.0));
 }
 
 
@@ -144,6 +145,16 @@ float dew_point(float T, float h) {
   return (243.5 * ln_term) / (17.67 + ln_term);
 }
 
+
+/* calculate absolute humidity [g/m3] given temperature T [C] and relative humidity h [0-1]
+   based on: https://www.easycalculation.com/weather/learn-relative-humidity-from-absolute.php */
+float abs_humidity(float T, float h) {
+  float M = 18.0; // [g/mol]
+  float R = 0.0623665; // [ mmHg x m3 / C / mol ]
+  float TK = 273.15 + T; // [K]
+  float ps = ( 0.61078 * 7.501 ) * exp ( (17.2694 * T) / (238.3 + T) ); // [mmHg]
+  return h * (M / (R * T) * ps);
+}
 
 /*
   bool load_command() {

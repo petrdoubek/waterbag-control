@@ -29,13 +29,13 @@ def handle_get(url, params, wfile):
     if 'offset_ms' in params:
         offset_ms = int(params['offset_ms'][0])
 
-    if temperature_out is not None and humidity_out is not None and temperature_in is not None and humidity_in is not None:
+    if temperature_out is not None or humidity_out is not None or temperature_in is not None or humidity_in is not None:
         insert_environment(db, offset_ms, temperature_out, humidity_out, temperature_in, humidity_in)
         rsp += 'OK'
     elif url.path.endswith('table'):
         rsp += "<pre>" + table_environment(db) + "</pre>\n"
-    elif url.path.endswith('chart') or url.path == '/dryingfan':
-        rsp += chart_environment(db, interval_s)
+    #elif url.path.endswith('chart') or url.path == '/dryingfan':
+    #    rsp += chart_environment(db, interval_s)
     else:
         rsp = "UNKNOWN REQUEST"
 
@@ -72,45 +72,6 @@ def table_environment(db):
     except mysql.connector.Error as err:
         rsp = err.msg
     return rsp
-
-
-def chart_environment(db, interval_s):
-    tm_now = time.time()
-    (temperature, humidity, moisture) = get_data(db, tm_now - interval_s, tm_now)
-    with open(CHART_TEMPLATE, 'r') as template_file:
-        return template_file.read()\
-            .replace('%STATE%', '%dC %d%% soil moisture' % (temperature[-1][1], moisture[-1][1]))\
-            .replace('%TEMPERATURE%', timeseries_csv(temperature)) \
-            .replace('%HUMIDITY%', timeseries_csv(humidity)) \
-            .replace('%MOISTURE%', timeseries_csv(moisture))
-
-
-def get_data(db, tm_from, tm_to):
-    """returns:
-       - time series [{t,temperature}]
-       - time series [{t,air humidity}]
-       - time series [{t,soil moisture}]"""
-    try:
-        cursor = db.db.cursor()
-
-        temperature = read_timeseries(cursor, 'temperature', tm_from, tm_to)
-        humidity = read_timeseries(cursor, 'humidity', tm_from, tm_to)
-
-        cursor.close()
-        return (temperature, humidity)
-    except mysql.connector.Error as err:
-        return err.msg
-
-
-def read_timeseries(cursor, table, tm_from, tm_to):
-    timeseries = []
-    cursor.execute("SELECT * FROM %s"
-                   " WHERE time_ms BETWEEN %d and %d ORDER BY time_ms"
-                   % (table, tm_from, tm_to))
-    for (time_ms, value) in cursor:
-        timeseries.append((time_ms, value))
-    return timeseries
-
 
 
 def main():

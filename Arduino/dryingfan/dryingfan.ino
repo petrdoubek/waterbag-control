@@ -10,7 +10,7 @@
 
 #include <DHT.h>;
 
-DHT OutsideDHT(D7, DHT22);
+DHT OutsideDHT(D2, DHT22);
 DHT InsideDHT(D1, DHT22);
 
 // server resources, base URL of the server (like https://example.dom) is defined in secrets.h as SERVER
@@ -19,6 +19,8 @@ DHT InsideDHT(D1, DHT22);
 //#define USE_EEPROM  // optional, to be able to update configuration without flashing new software
 #include "JsonConfig.h"
 JsonConfig jcfg;
+
+#define LED_PIN          D7
 
 #define USE_DISPLAY // optional, use 4 digit TM1637 display for debugging
 #define DIO_PIN          D3  // display - optional
@@ -51,6 +53,9 @@ void setup() {
   Serial.begin(9600);
   Serial.setTimeout(2000);
   while(!Serial) {}
+
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, LOW);
   
   OutsideDHT.begin();
   InsideDHT.begin();
@@ -73,14 +78,16 @@ void setup() {
 
 void loop() {
   for (int i=0; i<WINDOW; i++) {
+    digitalWrite(LED_PIN, HIGH);
     Serial.printf("#%03d Out: ", i);
     measure_dht(OutsideDHT, OutsideTemperature, OutsideHumidity, valid_temp_out, valid_hum_out);
     Serial.printf("   In: ");
     measure_dht(InsideDHT, InsideTemperature, InsideHumidity, valid_temp_in, valid_hum_in);
     Serial.println();
+    digitalWrite(LED_PIN, LOW);
     delay(2000); // DHT22 requires 2s interval between measurements
   }
-  send_to_server();
+  //send_to_server();
   disp4.off();
 
   Serial.printf("Sleep for %ds\n", (long) jcfg.val["CYCLE_SEND_S"]);
@@ -97,25 +104,25 @@ void measure_dht(DHT dht,
   int hum_pct = (int) dht.readHumidity();
   float temp_C = dht.readTemperature();
 
-  Serial.printf("    Temp: %5.1fC", temp_C);
+  Serial.printf("    Temp:%3.0fC", temp_C);
   if (temp_C >= -50.0 && temp_C <= 100.0) {
     Temperature.AddValue(temp_C);
     valid_temp = true;
     disp4.showNumberDec((int) temp_C, false);
   } else {
-    disp4.printDispErr("temperature out of range", 5);
+    disp4.printDispErr(" (out of range)", 5);
   }
 
-  Serial.printf("    Humidity: %3d%%", hum_pct);
+  Serial.printf("    RelHum:%3d%%", hum_pct);
   if (hum_pct >= 0 && hum_pct <= 100) {
     Humidity.AddValue(hum_pct);
     valid_hum = true;
   } else {
-    disp4.printDispErr("humidity out of range", 6);
+    disp4.printDispErr(" (out of range)", 6);
   }
 
-  Serial.printf("    Dew point: %5.1fC", dew_point(temp_C, (float) hum_pct / 100.0));
-  Serial.printf("    Abs humidity: %5.1fg/m3", abs_humidity(temp_C, (float) hum_pct / 100.0));
+  Serial.printf("    DewPt: %2.0fC", dew_point(temp_C, (float) hum_pct / 100.0));
+  Serial.printf("    AbsHum: %3.0fg/m3", abs_humidity(temp_C, (float) hum_pct / 100.0));
 }
 
 
@@ -153,7 +160,7 @@ float abs_humidity(float T, float h) {
   float R = 0.0623665; // [ mmHg x m3 / C / mol ]
   float TK = 273.15 + T; // [K]
   float ps = ( 0.61078 * 7.501 ) * exp ( (17.2694 * T) / (238.3 + T) ); // [mmHg]
-  return h * (M / (R * T) * ps);
+  return h * (M / (R * TK) * ps);
 }
 
 /*

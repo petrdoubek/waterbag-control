@@ -42,6 +42,8 @@ class RequestHandler(BaseHTTPRequestHandler):
             water.config.handle_get(CFG, parsed_url, parsed_params, self.wfile)
         elif parsed_url.path.startswith('/environment'):
             water.environment.handle_get(parsed_url, parsed_params, self.wfile)
+        elif parsed_url.path.startswith('/dryingfan'):
+            water.dryingfan.handle_get(parsed_url, parsed_params, self.wfile)
         else:
             self.wfile.write(bytes("UNKNOWN REQUEST", 'utf-8'))
 

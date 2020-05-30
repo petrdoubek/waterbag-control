@@ -12,6 +12,7 @@ import water.openweather
 import water.chart
 import water.config
 import water.environment
+import water.dryingfan
 
 logging.basicConfig(stream=sys.stdout,
                     level=logging.INFO,

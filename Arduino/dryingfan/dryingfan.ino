@@ -87,7 +87,7 @@ void loop() {
     digitalWrite(LED_PIN, LOW);
     delay(2000); // DHT22 requires 2s interval between measurements
   }
-  //send_to_server();
+  send_to_server();
   disp4.off();
 
   Serial.printf("Sleep for %ds\n", (long) jcfg.val["CYCLE_SEND_S"]);
@@ -130,7 +130,7 @@ void send_to_server() {
   if (valid_temp_out || valid_hum_out || valid_temp_in || valid_hum_in) {
     String ignored_response;
     bool rsp = wific.get_url(String(INSERT_PATH)
-           + (valid_temp_out ? ("&insert_temperature_out=" + String(OutsideTemperature.GetFiltered(), 1)) : "")
+           + (valid_temp_out ? ("insert_temperature_out=" + String(OutsideTemperature.GetFiltered(), 1)) : "")
            + (valid_hum_out ? ("&insert_humidity_out=" + String(OutsideHumidity.GetFiltered())) : "")
            + (valid_temp_in ? ("&insert_temperature_in=" + String(InsideTemperature.GetFiltered(), 1)) : "")
            + (valid_hum_in ? ("&insert_humidity_in=" + String(InsideHumidity.GetFiltered())) : ""),

@@ -13,16 +13,24 @@
 
 class Display4Digit {
   public:
-    Display4Digit(int clk_pin, int dio_pin, int brightness = 8) {
+    Display4Digit(int clk_pin, int dio_pin, int brightness = 1) {
       #ifdef USE_DISPLAY
       _disp = new TM1637Display(clk_pin, dio_pin);
-      _disp->setBrightness(brightness); // range 8-15
+      _disp->setBrightness(brightness); // range 0-7
       #endif
     }
 
     ~Display4Digit() {
       #ifdef USE_DISPLAY
+      off();
       delete _disp;
+      #endif
+    }
+
+    // turn the display off
+    void off() {
+      #ifdef USE_DISPLAY
+      _disp->setBrightness(0, false);
       #endif
     }
 

@@ -1,4 +1,5 @@
 import logging
+import math
 import mysql.connector
 import time
 
@@ -53,7 +54,8 @@ def insert_environment(db, offset_ms, temperature_out, humidity_out, temperature
 
 def table_environment(db):
     """return list of temperature and humidity measurements in pre-tags"""
-    rsp = ""
+    rsp =  "time                     outside      inside     [g/m3]"
+    rsp =  "time                   temp   hum   temp   hum  out  in"
     try:
         cursor = db.db.cursor()
         query = ("SELECT time_ms, temperature_out, humidity_out, temperature_in, humidity_in"
@@ -62,16 +64,35 @@ def table_environment(db):
         cursor.execute(query)
 
         for (time_ms, temperature_out, humidity_out, temperature_in, humidity_in) in cursor:
-            rsp += "\n%s  %s  %s  %s %s" % (time.strftime("%a %d.%m. %X", time.localtime(time_ms)),
-                                          '%5.1fC' % temperature_out if temperature_out is not None else '  n/a ',
-                                          '%3d%%' % humidity_out if humidity_out is not None else 'n/a ',
-                                          '%5.1fC' % temperature_in if temperature_in is not None else '  n/a ',
-                                          '%3d%%' % humidity_in if humidity_in is not None else 'n/a ')
+            abs_out = abs_humidity(temperature_out, humidity_out)
+            abs_in  = abs_humidity(temperature_in, humidity_in)
+            rsp += "\n%s  %s  %s  %s %s %s %s %s" % (
+                        time.strftime("%a %d.%m. %X", time.localtime(time_ms)),
+                        '%5.1fC' % temperature_out if temperature_out is not None else '  n/a ',
+                        '%3d%%' % humidity_out if humidity_out is not None else 'n/a ',
+                        '%5.1fC' % temperature_in if temperature_in is not None else '  n/a ',
+                        '%3d%%' % humidity_in if humidity_in is not None else 'n/a ',
+                        '%3d' % abs_out if abs_out is not None else 'n/a',
+                        '%3d' % abs_in if abs_in is not None else 'n/a',
+                        'FAN' if abs_out is not None and abs_in is not None and (abs_out+0.5) <= abs_in else ''
+            )
 
         cursor.close()
     except mysql.connector.Error as err:
         rsp = err.msg
     return rsp
+
+
+def abs_humidity(T, h):
+    """calculate absolute humidity [g/m3] given temperature T [C] and relative humidity h [%]
+       based on: https://www.easycalculation.com/weather/learn-relative-humidity-from-absolute.php"""
+    if T is None or h is None:
+        return None
+    M = 18.0 # [g/mol]
+    R = 0.0623665 # [ mmHg x m3 / C / mol ]
+    TK = 273.15 + T # [K]
+    ps = ( 0.61078 * 7.501 ) * math.exp ( (17.2694 * T) / (238.3 + T) ) # [mmHg]
+    return h/100.0 * (M / (R * TK) * ps)
 
 
 def main():

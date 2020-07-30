@@ -10,8 +10,8 @@
 
 #include <DHT.h>;
 
-DHT OutsideDHT(D2, DHT22);
-DHT InsideDHT(D1, DHT22);
+DHT OutsideDHT(D1, DHT22);
+DHT InsideDHT(D2, DHT22);
 
 // server resources, base URL of the server (like https://example.dom) is defined in secrets.h as SERVER
 #define INSERT_PATH   "/dryingfan?"
@@ -20,11 +20,14 @@ DHT InsideDHT(D1, DHT22);
 #include "JsonConfig.h"
 JsonConfig jcfg;
 
-#define LED_PIN          D7
+#define FAN_PIN  D3  // relay that triggers the fan
+bool fan_running = false;
 
-#define USE_DISPLAY // optional, use 4 digit TM1637 display for debugging
-#define DIO_PIN          D3  // display - optional
-#define CLK_PIN          D4  // display - optional
+#define LED_PIN  D7  // blinks when measuring
+
+//#define USE_DISPLAY // optional, use 4 digit TM1637 display for debugging
+#define DIO_PIN          D5  // display - optional
+#define CLK_PIN          D6  // display - optional
 #include "Display4Digit.h"
 Display4Digit disp4(CLK_PIN, DIO_PIN);
 
@@ -35,24 +38,27 @@ WiFiClientHTTPS wific(WIFI_SSID, WIFI_PASSWORD, SERVER, &disp4);
 #include <MedianFilterLib.h>
 #define WINDOW 5 // median filter window size is fixed, easier than configurable
 
-
 void init_config() {
   jcfg.val["CYCLE_SEND_S"] = 60;
   jcfg.val["WIFI_TIMEOUT_S"] = 10;
+  jcfg.val["ABS_HUMIDITY_DIFF"] = 0.5;
 }
 
 
 void setup() {
   Serial.begin(9600);
   Serial.setTimeout(2000);
-  while(!Serial) {}
+  while (!Serial) {}
+
+  pinMode(FAN_PIN, OUTPUT);
+  digitalWrite(FAN_PIN, HIGH);  // the relay is activated by "grounded" pin, so HIGH means deactivated
 
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, LOW);
-  
+
   OutsideDHT.begin();
   InsideDHT.begin();
-  
+
   init_config();
 
   Serial.println();
@@ -77,7 +83,7 @@ void loop() {
   bool valid_temp_out = false, valid_hum_out = false;
   bool valid_temp_in = false, valid_hum_in = false;
 
-  for (int i=1; i<=WINDOW; i++) {
+  for (int i = 1; i <= WINDOW; i++) {
     digitalWrite(LED_PIN, HIGH);
     delay(100);
     digitalWrite(LED_PIN, LOW);
@@ -87,7 +93,7 @@ void loop() {
     measure_dht(InsideDHT, InsideTemperature, InsideHumidity, valid_temp_in, valid_hum_in);
     Serial.println();
 
-    if (i==WINDOW) delay(3000); // DHT22 requires 2s interval between measurements
+    if (i == WINDOW) delay(3000); // DHT22 requires 2s interval between measurements
   }
   float temp_out = OutsideTemperature.GetFiltered();
   int hum_out = OutsideHumidity.GetFiltered();
@@ -96,8 +102,10 @@ void loop() {
 
   Serial.println();
   log_calculated_values("Out:", temp_out, hum_out, valid_temp_out, valid_hum_out);
-  log_calculated_values("In: ", temp_in,  hum_in,  valid_temp_in,  valid_hum_in ); 
-  
+  log_calculated_values("In: ", temp_in,  hum_in,  valid_temp_in,  valid_hum_in );
+
+  operate_fan(temp_out, hum_out, temp_in, hum_in, valid_temp_in && valid_hum_in && valid_temp_out && valid_hum_out);
+
   send_to_server(temp_out, hum_out, temp_in, hum_in,
                  valid_temp_out, valid_hum_out, valid_temp_in, valid_hum_in);
   disp4.off();
@@ -135,16 +143,34 @@ void measure_dht(DHT dht,
 }
 
 
+void operate_fan(float temp_out, int hum_out, float temp_in, int hum_in, bool all_valid)
+{
+  float abs_hum_diff = !all_valid ? -100 :
+                       abs_humidity(temp_in, (float) hum_in / 100.0) - abs_humidity(temp_out, (float) hum_out / 100.0);
+  // positive: inside is more humid than outside
+
+  if (!fan_running && abs_hum_diff >= (float) jcfg.val["ABS_HUMIDITY_DIFF"]) {
+    digitalWrite(FAN_PIN, LOW);
+    fan_running = true;
+    Serial.println("FAN ON");
+  } else if (fan_running && abs_hum_diff < (float) jcfg.val["ABS_HUMIDITY_DIFF"]) {
+    digitalWrite(FAN_PIN, HIGH);
+    fan_running = false;
+    Serial.println("FAN OFF");
+  }
+}
+
+
 void send_to_server(float temp_out, int hum_out, float temp_in, int hum_in,
                     bool valid_temp_out, bool valid_hum_out, bool valid_temp_in, bool valid_hum_in) {
   if (valid_temp_out || valid_hum_out || valid_temp_in || valid_hum_in) {
     String ignored_response;
     bool rsp = wific.get_url(String(INSERT_PATH)
-           + (valid_temp_out ? ("insert_temperature_out=" + String(temp_out, 1)) : "")
-           + (valid_hum_out ? ("&insert_humidity_out=" + String(hum_out)) : "")
-           + (valid_temp_in ? ("&insert_temperature_in=" + String(temp_in, 1)) : "")
-           + (valid_hum_in ? ("&insert_humidity_in=" + String(hum_in)) : ""),
-           ignored_response, true, (int) jcfg.val["WIFI_TIMEOUT_S"]);
+                             + (valid_temp_out ? ("insert_temperature_out=" + String(temp_out, 1)) : "")
+                             + (valid_hum_out ? ("&insert_humidity_out=" + String(hum_out)) : "")
+                             + (valid_temp_in ? ("&insert_temperature_in=" + String(temp_in, 1)) : "")
+                             + (valid_hum_in ? ("&insert_humidity_in=" + String(hum_in)) : ""),
+                             ignored_response, true, (int) jcfg.val["WIFI_TIMEOUT_S"]);
     if (!rsp) {
       Serial.println("sending failed");
     }
@@ -178,7 +204,7 @@ void log_calculated_values(const char *prefix, float temp_C, int hum_pct, bool v
 {
   if (valid_temp && valid_hum) {
     Serial.printf("%s", prefix);
-    Serial.printf("   Temp:%3.0fC", temp_C);  
+    Serial.printf("   Temp:%3.0fC", temp_C);
     Serial.printf("   RelHum:%3d%%", hum_pct);
     Serial.printf("   DewPt: %2.0fC", dew_point(temp_C, (float) hum_pct / 100.0));
     Serial.printf("   AbsHum: %3.0fg/m3", abs_humidity(temp_C, (float) hum_pct / 100.0));

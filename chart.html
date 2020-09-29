@@ -17,7 +17,7 @@
 
 <body style="font-family:arial;">
 	<h1>Waterbag: %STATE%</h1>
-	<p> <a href="chart?hours=8">8 hours</a> |
+	<p style="font-size:large"> <a href="chart?hours=8">8 hours</a> |
 		<a href="chart?days=1">1 day</a> |
 		<a href="chart?days=3">3 days</a> |
 		<a href="chart?days=7">week</a> |
@@ -41,7 +41,7 @@
 		</div>
 		<canvas id="chart1" style="display: block;" class="chartjs-render-monitor"></canvas>
 	</div>
-	<p>Total overflow time %TOTAL_OVERFLOW_S%s.</p>
+	<p>Total overflow time %TOTAL_OVERFLOW_S%s, app. %TOTAL_OVERFLOW_L%l.</p>
 	<script>
 		window.chartColors = {
 		  red: 'rgb(255, 99, 132)', redFill: 'rgb(255, 99, 132, 0.3)',

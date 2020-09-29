@@ -39,9 +39,9 @@ WiFiClientHTTPS wific(WIFI_SSID, WIFI_PASSWORD, SERVER, &disp4);
 #define WINDOW 5 // median filter window size is fixed, easier than configurable
 
 void init_config() {
-  jcfg.val["CYCLE_SEND_S"] = 60;
+  jcfg.val["CYCLE_SEND_S"] = 20;
   jcfg.val["WIFI_TIMEOUT_S"] = 10;
-  jcfg.val["ABS_HUMIDITY_DIFF"] = 0.5;
+  jcfg.val["ABS_HUMIDITY_DIFF"] = 0.1;
 }
 
 

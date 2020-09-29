@@ -11,7 +11,8 @@ CONFIG = dict(
     flat_width_mm = 2000,   # width of flat waterbag, used for 'oval' volume approximation
     roof_area_m2 = 100,      # area from which rain water is collected, used in connection with precipitation forecast
     volume_method = 'oval', # approximation method
-    city = 'pardubice,cz'
+    city = 'pardubice,cz',
+    overflow_l_per_s = 0.33
 )
 
 HTML_START = '<html><body style="font-family:arial;">'

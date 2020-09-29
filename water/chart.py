@@ -43,7 +43,7 @@ def html_chart(cfg, db):
             .replace('%FORECASTED_RAIN%', forecasted_rain)\
             .replace('%MAX_L%', '%d' % round(1.25 * float(cfg['max_volume_l'])))\
             .replace('%TOTAL_OVERFLOW_S%', '%d' % total_open_s)\
-            .replace('%TOTAL_OVERFLOW_L%', '%d' % (total_open_s * float(cfg['overflow_l_per_s']))
+            .replace('%TOTAL_OVERFLOW_L%', '%d' % (total_open_s * float(cfg['overflow_l_per_s'])))
 
 
 def get_data(cfg, db, tm_from, tm_now, tm_to):

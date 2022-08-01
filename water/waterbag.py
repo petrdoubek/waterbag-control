@@ -4,7 +4,7 @@ import mysql.connector
 import time
 
 
-def handle_get(url, params, wfile):
+def handle_get(cfg, url, params, wfile):
     db = JawsDB()
     rsp = ""
 
@@ -14,17 +14,22 @@ def handle_get(url, params, wfile):
         logging.info('insert %dmm height into db' % height_mm)
         insert_height(db, height_mm)
         logging.info('done')
+        check_forecast(cfg, height_mm)
         rsp += 'OK'
+
     elif 'insert_log' in params:
         msg = params['insert_log'][0]
         logging.info('insert log into db: %s' % msg)
         insert_log(db, msg)
         logging.info('done')
         rsp += 'OK'
+
     elif url.path.endswith('log'):
         rsp += "<pre>" + read_log(db) + "</pre>\n"
+
     elif url.path.endswith('command'):
         rsp += pop_command(db)
+
     else:
         rsp += "<pre>" + read_height(db, 30) + "</pre>\n"
 
@@ -131,6 +136,14 @@ def volume_l(cfg, height_mm):
 def rain_l(cfg, rain_mm):
     """conversion from precipitation mm to liters of water harvested"""
     return rain_mm * float(cfg['roof_area_m2'])
+
+
+def check_forecast(cfg, height_mm):
+    rain_soon_bag_mm = 0
+    can_discharge_soon_bag_mm = 0
+    if height_mm + rain_soon_bag_mm > cfg['max_height_mm'] + can_discharge_soon_bag_mm:
+        logging.info('TODO temporarily decrease trigger overflow height')
+    return False
 
 
 def main():

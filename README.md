@@ -70,3 +70,14 @@ Either use the `config` page on web server, or command line interface, e.g.:
 ```
 python water/waterbag.py insert_command '{"DIST_SENSOR_BOTTOM_MM":1674,"TRIGGER_OVERFLOW_MM":600,"MAX_DETECT_CM":300,"N_PINGS":9,"MIN_CHANGE_MM":3,"CYCLE_MEASURE_S":2,"CYCLE_SEND_S":60,"FORCE_SEND_S":7200,"WIFI_TIMEOUT_S":30}'
 ```
+
+## Backup, Migration
+
+The JawsDB database can be dumped to SQL statements and then uploaded to a new MySQL database (from [Manual Backups and Migrations with mysqldump](https://devcenter.heroku.com/articles/jawsdb#manual-backups-and-migrations-with-mysqldump)):
+
+```
+mysqldump -f --no-tablespaces -h $JAWSDB_HOST -u $JAWSDB_USER -p$JAWSDB_PASSWD $JAWSDB_DATABASE > backup.sql
+mysql -h $NEWDB_HOST -u $NEWDB_USER -p$NEWDB_PASSWD $NEWDB_DATABASE < backup.sql
+```
+
+

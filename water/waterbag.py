@@ -3,6 +3,8 @@ import math
 import mysql.connector
 import time
 
+from builtins import float, int, abs, bytes, pow, len
+
 
 def handle_get(cfg, url, params, wfile):
     db = JawsDB()
@@ -14,7 +16,7 @@ def handle_get(cfg, url, params, wfile):
         logging.info('insert %dmm height into db' % height_mm)
         insert_height(db, height_mm)
         logging.info('done')
-        check_forecast(cfg, height_mm)
+        check_forecast(cfg, db, height_mm)
         rsp += 'OK'
 
     elif 'insert_log' in params:
@@ -127,7 +129,7 @@ def volume_l(cfg, height_mm):
     if cfg['volume_method'] == 'linear':
         return height_mm * float(cfg['max_volume_l']) / float(cfg['max_height_mm'])
     elif cfg['volume_method'] == 'oval':
-        return waterbag_cut_mm2(height_mm, float(cfg['flat_width_mm']))\
+        return waterbag_cut_mm2(height_mm, float(cfg['flat_width_mm'])) \
                * float(cfg['max_volume_l']) \
                / waterbag_cut_mm2(float(cfg['max_height_mm']), float(cfg['flat_width_mm']))
     return -1
@@ -138,11 +140,27 @@ def rain_l(cfg, rain_mm):
     return rain_mm * float(cfg['roof_area_m2'])
 
 
-def check_forecast(cfg, height_mm):
-    rain_soon_bag_mm = 0
-    can_discharge_soon_bag_mm = 0
-    if height_mm + rain_soon_bag_mm > cfg['max_height_mm'] + can_discharge_soon_bag_mm:
-        logging.info('TODO temporarily decrease trigger overflow height')
+from .openweather import rain_soon_mm
+
+def check_forecast(cfg, db, height_mm):
+    """check whether waterbag can discharge the rain coming in next interval"""
+
+    # linear approximation of liters per waterbag mm
+    bag_l_per_mm = float(cfg['max_volume_l']) / float(cfg['max_height_mm'])
+
+    # get forecast for the time interval until next forced height measurement
+    forecast_mm = rain_soon_mm(db, time.time(), time.time() + cfg['FORCE_SEND_S'])  # TODO sensor params are in DB!
+    rain_soon_bag_mm = rain_l(cfg, forecast_mm) / bag_l_per_mm
+
+    # calculate how much can be discharged in terms of waterbag height in next 30 minutes
+    can_discharge_soon_bag_l = float(cfg['overflow_l_per_s']) * 1800
+    can_discharge_soon_bag_mm = can_discharge_soon_bag_l / bag_l_per_mm
+
+    logging.info('check_forecast %d + %d > %d + %d' %
+                 height_mm, rain_soon_bag_mm, float(cfg['max_height_mm']), can_discharge_soon_bag_mm)
+
+    if (height_mm + rain_soon_bag_mm) > (float(cfg['max_height_mm']) + can_discharge_soon_bag_mm):
+        logging.warn('TODO temporarily decrease trigger overflow height')
     return False
 
 

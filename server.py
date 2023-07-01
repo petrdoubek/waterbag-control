@@ -1,4 +1,4 @@
-"""Robot for purchasing loan participations on zonky.cz"""
+"""Web interface for waterbag monitoring device"""
 
 import logging
 import threading

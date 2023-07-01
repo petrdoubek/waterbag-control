@@ -84,6 +84,26 @@ def read_forecast(db, start_timestamp):
     return rsp
 
 
+def rain_soon_mm(db, start_timestamp, end_timestamp):
+    rain_soon_mm = 0
+    try:
+        cursor = db.db.cursor()
+        query = ("SELECT SUM(rain_mm) FROM forecast"
+                 " WHERE valid_to >= %d"
+                 "   AND forecast_to >= %d"
+                 "   AND forecast_from <= %d"
+                 " ORDER BY forecast_from asc"
+                 % (time.time(), start_timestamp, end_timestamp))
+        cursor.execute(query)
+        for (rain_mm) in cursor:
+            rain_soon_mm = rain_mm
+            break
+        cursor.close()
+    except mysql.connector.Error as err:
+        return 0
+    return rain_soon_mm
+
+
 def main():
     """if this module is run, connect to the database and print it out + accept some command line arguments to test methods"""
     import sys
